@@ -1,0 +1,128 @@
+// Prisma schema for AuraLedger Personal Finance & Expense Tracker
+// Configured for Neon Serverless PostgreSQL with connection pooling
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum AccountType {
+  CASH
+  BANK
+  SAVINGS
+  CREDIT
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum Frequency {
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+model Account {
+  id                   String                 @id @default(uuid())
+  name                 String
+  type                 AccountType
+  balance              Float                  @default(0.0)
+  currency             String                 @default("USD")
+  color                String?                @default("#10B981")
+  isDefault            Boolean                @default(false)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  transactions         Transaction[]          @relation("AccountTransactions")
+  receivedTransfers    Transaction[]          @relation("TransferToAccount")
+  recurringTransactions RecurringTransaction[]
+}
+
+model Category {
+  id                   String                 @id @default(uuid())
+  name                 String
+  type                 CategoryType
+  icon                 String                 @default("tag")
+  color                String                 @default("#6366F1")
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  transactions         Transaction[]
+  budgets              Budget[]
+  recurringTransactions RecurringTransaction[]
+}
+
+model Transaction {
+  id            String          @id @default(uuid())
+  amount        Float
+  type          TransactionType
+  date          DateTime
+  description   String
+  categoryId    String?
+  category      Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  accountId     String
+  account       Account         @relation("AccountTransactions", fields: [accountId], references: [id], onDelete: Cascade)
+  toAccountId   String?
+  toAccount     Account?        @relation("TransferToAccount", fields: [toAccountId], references: [id], onDelete: SetNull)
+  isRecurring   Boolean         @default(false)
+  notes         String?
+  tags          String[]        @default([])
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([date])
+  @@index([accountId])
+  @@index([categoryId])
+}
+
+model Budget {
+  id          String   @id @default(uuid())
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  amountLimit Float
+  month       Int      // 1-12
+  year        Int      // e.g. 2026
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([categoryId, month, year])
+}
+
+model SavingsGoal {
+  id            String   @id @default(uuid())
+  name          String
+  targetAmount  Float
+  currentAmount Float    @default(0.0)
+  targetDate    DateTime
+  color         String   @default("#10B981")
+  category      String?  @default("General")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model RecurringTransaction {
+  id          String    @id @default(uuid())
+  amount      Float
+  type        TransactionType
+  frequency   Frequency
+  nextDueDate DateTime
+  description String
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  accountId   String
+  account     Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
