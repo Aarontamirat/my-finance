@@ -61,10 +61,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [chartType, setChartType] = useState<'area' | 'bar'>('area');
   const [timeRangeMonths, setTimeRangeMonths] = useState<number>(6);
 
-  // Current date anchor (October 2026 based on mock context or current device)
-  const currentDate = new Date('2026-10-09');
+  // Dynamic date calculations based on actual current time
+  const currentDate = new Date();
   const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth() + 1; // 10
+  const currentMonth = currentDate.getMonth() + 1;
+  const currentMonthStr = String(currentMonth).padStart(2, '0');
+  const currentMonthPrefix = `${currentYear}-${currentMonthStr}`;
 
   // 1. Net worth calculation
   const netWorth = useMemo(() => {
@@ -73,8 +75,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // 2. Current month income, expense, and savings rate
   const monthlyMetrics = useMemo(() => {
-    const currentMonthPrefix = `2026-10`; // October 2026
-
     const thisMonthTx = transactions.filter((tx) =>
       tx.date.startsWith(currentMonthPrefix)
     );
@@ -91,24 +91,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const savingsRate = income > 0 ? Math.max(0, Math.round((netSavings / income) * 100)) : 0;
 
     return { income, expenses, netSavings, savingsRate };
-  }, [transactions]);
+  }, [transactions, currentMonthPrefix]);
 
-  // 3. Due recurring transactions (due today or in past/near future)
+  // 3. Due recurring transactions (due within next 7 days or overdue)
   const dueRecurringItems = useMemo(() => {
-    const todayStr = '2026-10-09';
-    return recurring.filter((item) => item.isActive && item.nextDueDate <= '2026-10-15');
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + 7);
+    const targetStr = targetDate.toISOString().split('T')[0];
+    return recurring.filter((item) => item.isActive && item.nextDueDate <= targetStr);
   }, [recurring]);
 
-  // 4. Cash Flow Chart Data (Past 6 months: May 2026 - Oct 2026)
+  // 4. Cash Flow Chart Data (Past months dynamically computed from real transactions)
   const cashFlowData = useMemo(() => {
-    const monthKeys = [
-      { key: '2026-05', label: 'May' },
-      { key: '2026-06', label: 'Jun' },
-      { key: '2026-07', label: 'Jul' },
-      { key: '2026-08', label: 'Aug' },
-      { key: '2026-09', label: 'Sep' },
-      { key: '2026-10', label: 'Oct' },
-    ].slice(6 - timeRangeMonths);
+    const monthKeys: { key: string; label: string }[] = [];
+    for (let i = timeRangeMonths - 1; i >= 0; i--) {
+      const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const label = d.toLocaleDateString('en-US', { month: 'short' });
+      monthKeys.push({ key: `${y}-${m}`, label });
+    }
 
     return monthKeys.map(({ key, label }) => {
       const monthTx = transactions.filter((t) => t.date.startsWith(key));
@@ -119,22 +121,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         .filter((t) => t.type === 'EXPENSE')
         .reduce((sum, t) => sum + t.amount, 0);
 
-      // Add baseline fallback values for older historical months if no tx recorded
-      const displayIncome = income > 0 ? income : (key === '2026-05' ? 7800 : key === '2026-06' ? 8200 : income);
-      const displayExpense = expense > 0 ? expense : (key === '2026-05' ? 3200 : key === '2026-06' ? 3400 : expense);
+      const net = income - expense;
 
       return {
         month: label,
-        income: displayIncome,
-        expense: displayExpense,
-        net: displayIncome - displayExpense,
+        income,
+        expense,
+        net,
       };
     });
   }, [transactions, timeRangeMonths]);
 
   // 5. Category Breakdown Donut Data for current month
   const categorySpendingData = useMemo(() => {
-    const currentMonthPrefix = `2026-10`;
     const thisMonthExpenses = transactions.filter(
       (tx) => tx.type === 'EXPENSE' && tx.date.startsWith(currentMonthPrefix)
     );
@@ -159,11 +158,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       .sort((a, b) => b.value - a.value);
 
     return result;
-  }, [transactions, categories]);
+  }, [transactions, categories, currentMonthPrefix]);
 
   // 6. Current Month Budgets Status
   const budgetStatuses = useMemo(() => {
-    const currentMonthPrefix = `2026-10`;
     const currentMonthBudgets = budgets.filter(
       (b) => b.month === currentMonth && b.year === currentYear
     );

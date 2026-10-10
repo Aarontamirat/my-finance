@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import {
   Account,
@@ -7,24 +7,21 @@ import {
   Budget,
   SavingsGoal,
   RecurringTransaction,
-  AccountType,
-  TransactionType,
-  Frequency
 } from '../types/finance';
-import {
-  INITIAL_ACCOUNTS,
-  INITIAL_CATEGORIES,
-  INITIAL_TRANSACTIONS,
-  INITIAL_BUDGETS,
-  INITIAL_SAVINGS_GOALS,
-  INITIAL_RECURRING
-} from '../data/initialData';
+import { INITIAL_CATEGORIES } from '../data/initialData';
 
 export interface ToastMessage {
   id: string;
   type: 'success' | 'info' | 'error';
   title: string;
   message?: string;
+}
+
+export interface DatabaseStatus {
+  connected: boolean;
+  engine: string;
+  databaseUrlConfigured: boolean;
+  error?: string;
 }
 
 interface FinanceContextType {
@@ -38,6 +35,8 @@ interface FinanceContextType {
   currency: string;
   theme: 'dark' | 'light';
   toasts: ToastMessage[];
+  isLoading: boolean;
+  dbStatus: DatabaseStatus;
 
   // Actions
   setCurrency: (currency: string) => void;
@@ -45,85 +44,68 @@ interface FinanceContextType {
   toggleTheme: () => void;
   showToast: (type: 'success' | 'info' | 'error', title: string, message?: string) => void;
   removeToast: (id: string) => void;
+  refreshData: () => Promise<void>;
 
   // Account actions
-  addAccount: (account: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateAccount: (id: string, account: Partial<Account>) => void;
-  deleteAccount: (id: string) => void;
-  transferFunds: (fromAccountId: string, toAccountId: string, amount: number, description: string, date: string) => void;
+  addAccount: (account: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateAccount: (id: string, account: Partial<Account>) => Promise<void>;
+  deleteAccount: (id: string) => Promise<void>;
+  transferFunds: (fromAccountId: string, toAccountId: string, amount: number, description: string, date: string) => Promise<void>;
 
   // Transaction actions
-  addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => void;
-  updateTransaction: (id: string, tx: Partial<Transaction>) => void;
-  deleteTransaction: (id: string) => void;
+  addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => Promise<void>;
+  updateTransaction: (id: string, tx: Partial<Transaction>) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
 
   // Budget actions
-  setBudget: (budget: Omit<Budget, 'id'>) => void;
-  deleteBudget: (id: string) => void;
-  clonePreviousMonthBudgets: (targetMonth: number, targetYear: number) => void;
+  setBudget: (budget: Omit<Budget, 'id'>) => Promise<void>;
+  deleteBudget: (id: string) => Promise<void>;
+  clonePreviousMonthBudgets: (targetMonth: number, targetYear: number) => Promise<void>;
 
   // Savings Goal actions
-  addSavingsGoal: (goal: Omit<SavingsGoal, 'id'>) => void;
-  updateSavingsGoal: (id: string, goal: Partial<SavingsGoal>) => void;
-  deleteSavingsGoal: (id: string) => void;
-  depositToGoal: (goalId: string, fromAccountId: string, amount: number) => void;
-  withdrawFromGoal: (goalId: string, toAccountId: string, amount: number) => void;
+  addSavingsGoal: (goal: Omit<SavingsGoal, 'id'>) => Promise<void>;
+  updateSavingsGoal: (id: string, goal: Partial<SavingsGoal>) => Promise<void>;
+  deleteSavingsGoal: (id: string) => Promise<void>;
+  depositToGoal: (goalId: string, fromAccountId: string, amount: number) => Promise<void>;
+  withdrawFromGoal: (goalId: string, toAccountId: string, amount: number) => Promise<void>;
 
   // Recurring actions
-  addRecurring: (rec: Omit<RecurringTransaction, 'id'>) => void;
-  updateRecurring: (id: string, rec: Partial<RecurringTransaction>) => void;
-  deleteRecurring: (id: string) => void;
-  executeDueRecurring: (id: string) => void;
+  addRecurring: (rec: Omit<RecurringTransaction, 'id'>) => Promise<void>;
+  updateRecurring: (id: string, rec: Partial<RecurringTransaction>) => Promise<void>;
+  deleteRecurring: (id: string) => Promise<void>;
+  executeDueRecurring: (id: string) => Promise<void>;
 
   // Category actions
-  addCategory: (cat: Omit<Category, 'id'>) => void;
-  updateCategory: (id: string, cat: Partial<Category>) => void;
-  deleteCategory: (id: string) => void;
+  addCategory: (cat: Omit<Category, 'id'>) => Promise<void>;
+  updateCategory: (id: string, cat: Partial<Category>) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
 
   // Helpers
   formatCurrency: (amount: number, customCurrency?: string) => string;
   exportToCSV: (filteredTransactions?: Transaction[]) => void;
   exportBackupJSON: () => void;
   importBackupJSON: (jsonData: string) => boolean;
-  resetDemoData: () => void;
-  clearAllData: (keepCategories?: boolean) => void;
+  clearAllData: (keepCategories?: boolean) => Promise<void>;
 }
 
-const STORAGE_KEY = 'auraledger_state_v1';
 const THEME_KEY = 'auraledger_theme_v1';
 const CURRENCY_KEY = 'auraledger_currency_v1';
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [accounts, setAccounts] = useState<Account[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY}_accounts`);
-    return saved ? JSON.parse(saved) : INITIAL_ACCOUNTS;
-  });
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+  const [recurring, setRecurring] = useState<RecurringTransaction[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const [categories, setCategories] = useState<Category[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY}_categories`);
-    return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
-  });
-
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY}_transactions`);
-    return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
-  });
-
-  const [budgets, setBudgets] = useState<Budget[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY}_budgets`);
-    return saved ? JSON.parse(saved) : INITIAL_BUDGETS;
-  });
-
-  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY}_goals`);
-    return saved ? JSON.parse(saved) : INITIAL_SAVINGS_GOALS;
-  });
-
-  const [recurring, setRecurring] = useState<RecurringTransaction[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY}_recurring`);
-    return saved ? JSON.parse(saved) : INITIAL_RECURRING;
+  const [dbStatus, setDbStatus] = useState<DatabaseStatus>({
+    connected: false,
+    engine: 'Checking database connection...',
+    databaseUrlConfigured: false,
   });
 
   const [currency, setCurrencyState] = useState<string>(() => {
@@ -136,35 +118,20 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  // Sync to localStorage
+  // Purge any legacy demo session keys from localStorage
   useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY}_accounts`, JSON.stringify(accounts));
-  }, [accounts]);
+    try {
+      localStorage.removeItem('auraledger_state_v1_accounts');
+      localStorage.removeItem('auraledger_state_v1_transactions');
+      localStorage.removeItem('auraledger_state_v1_budgets');
+      localStorage.removeItem('auraledger_state_v1_goals');
+      localStorage.removeItem('auraledger_state_v1_recurring');
+    } catch {
+      // ignore
+    }
+  }, []);
 
-  useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY}_categories`, JSON.stringify(categories));
-  }, [categories]);
-
-  useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY}_transactions`, JSON.stringify(transactions));
-  }, [transactions]);
-
-  useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY}_budgets`, JSON.stringify(budgets));
-  }, [budgets]);
-
-  useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY}_goals`, JSON.stringify(savingsGoals));
-  }, [savingsGoals]);
-
-  useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY}_recurring`, JSON.stringify(recurring));
-  }, [recurring]);
-
-  useEffect(() => {
-    localStorage.setItem(CURRENCY_KEY, currency);
-  }, [currency]);
-
+  // Theme synchronization
   useEffect(() => {
     localStorage.setItem(THEME_KEY, theme);
     if (theme === 'dark') {
@@ -178,17 +145,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [theme]);
 
-  // Toast helper
-  const showToast = (type: 'success' | 'info' | 'error', title: string, message?: string) => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    setToasts((prev) => [...prev, { id, type, title, message }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
-  };
+  // Currency synchronization
+  useEffect(() => {
+    localStorage.setItem(CURRENCY_KEY, currency);
+  }, [currency]);
 
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+  const setCurrency = (newCurrency: string) => {
+    setCurrencyState(newCurrency);
   };
 
   const setTheme = (newTheme: 'dark' | 'light') => {
@@ -199,454 +162,502 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
-  const setCurrency = (c: string) => {
-    setCurrencyState(c);
-    showToast('info', 'Currency updated', `Display currency changed to ${c}`);
+  // Toast notification system
+  const showToast = useCallback((type: 'success' | 'info' | 'error', title: string, message?: string) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    setToasts((prev) => [...prev, { id, type, title, message }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  }, []);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  // Fetch real data from database API endpoints
+  const refreshData = useCallback(async () => {
+    try {
+      const [healthRes, accRes, catRes, txRes, bgtRes, goalRes, recRes] = await Promise.allSettled([
+        fetch('/api/health').then((r) => r.json()),
+        fetch('/api/accounts').then((r) => r.json()),
+        fetch('/api/categories').then((r) => r.json()),
+        fetch('/api/transactions').then((r) => r.json()),
+        fetch('/api/budgets').then((r) => r.json()),
+        fetch('/api/savings-goals').then((r) => r.json()),
+        fetch('/api/recurring').then((r) => r.json()),
+      ]);
+
+      if (healthRes.status === 'fulfilled' && healthRes.value) {
+        setDbStatus(healthRes.value);
+      }
+
+      if (accRes.status === 'fulfilled' && Array.isArray(accRes.value)) {
+        setAccounts(accRes.value);
+      }
+
+      if (catRes.status === 'fulfilled' && Array.isArray(catRes.value) && catRes.value.length > 0) {
+        setCategories(catRes.value);
+      }
+
+      if (txRes.status === 'fulfilled' && Array.isArray(txRes.value)) {
+        setTransactions(txRes.value);
+      }
+
+      if (bgtRes.status === 'fulfilled' && Array.isArray(bgtRes.value)) {
+        setBudgets(bgtRes.value);
+      }
+
+      if (goalRes.status === 'fulfilled' && Array.isArray(goalRes.value)) {
+        setSavingsGoals(goalRes.value);
+      }
+
+      if (recRes.status === 'fulfilled' && Array.isArray(recRes.value)) {
+        setRecurring(recRes.value);
+      }
+    } catch (err: any) {
+      console.error('API synchronization error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    refreshData();
+  }, [refreshData]);
+
+  // Account operations
+  const addAccount = async (accountData: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const res = await fetch('/api/accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(accountData),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setAccounts((prev) => [created, ...prev]);
+        showToast('success', 'Account Created', `${created.name} added to database`);
+      } else {
+        throw new Error('Failed to create account');
+      }
+    } catch (err: any) {
+      showToast('error', 'Database Error', err.message);
+    }
   };
 
-  const formatCurrency = (amount: number, customCurrency?: string) => {
-    const cur = customCurrency || currency;
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: cur,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
+  const updateAccount = async (id: string, updates: Partial<Account>) => {
+    try {
+      const res = await fetch(`/api/accounts/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, ...updated } : a)));
+        showToast('success', 'Account Updated');
+      }
+    } catch (err: any) {
+      showToast('error', 'Update Failed', err.message);
+    }
   };
 
-  // ---------------- ACCOUNTS ----------------
-  const addAccount = (data: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newAccount: Account = {
-      ...data,
-      id: `acc-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setAccounts((prev) => [...prev, newAccount]);
-    showToast('success', 'Account created', `Added "${newAccount.name}"`);
+  const deleteAccount = async (id: string) => {
+    try {
+      const res = await fetch(`/api/accounts/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setAccounts((prev) => prev.filter((a) => a.id !== id));
+        setTransactions((prev) => prev.filter((t) => t.accountId !== id));
+        showToast('info', 'Account Deleted', 'Removed from database');
+      }
+    } catch (err: any) {
+      showToast('error', 'Delete Failed', err.message);
+    }
   };
 
-  const updateAccount = (id: string, data: Partial<Account>) => {
-    setAccounts((prev) =>
-      prev.map((acc) => (acc.id === id ? { ...acc, ...data, updatedAt: new Date().toISOString() } : acc))
-    );
-    showToast('success', 'Account updated');
-  };
-
-  const deleteAccount = (id: string) => {
-    const target = accounts.find((a) => a.id === id);
-    if (!target) return;
-    setAccounts((prev) => prev.filter((a) => a.id !== id));
-    showToast('info', 'Account deleted', `Removed "${target.name}"`);
-  };
-
-  const transferFunds = (
+  const transferFunds = async (
     fromAccountId: string,
     toAccountId: string,
     amount: number,
     description: string,
     date: string
   ) => {
-    if (fromAccountId === toAccountId) {
-      showToast('error', 'Transfer invalid', 'Source and destination accounts must be different');
-      return;
-    }
-    if (amount <= 0) {
-      showToast('error', 'Invalid amount', 'Transfer amount must be greater than zero');
-      return;
-    }
+    try {
+      const res = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          type: 'TRANSFER',
+          date,
+          description: description || 'Account Transfer',
+          accountId: fromAccountId,
+          toAccountId,
+          isRecurring: false,
+        }),
+      });
 
-    // Adjust balances
-    setAccounts((prev) =>
-      prev.map((acc) => {
-        if (acc.id === fromAccountId) {
-          return { ...acc, balance: acc.balance - amount, updatedAt: new Date().toISOString() };
-        }
-        if (acc.id === toAccountId) {
-          return { ...acc, balance: acc.balance + amount, updatedAt: new Date().toISOString() };
-        }
-        return acc;
-      })
-    );
-
-    // Record transfer transaction
-    const newTx: Transaction = {
-      id: `tx-${Date.now()}`,
-      amount,
-      type: 'TRANSFER',
-      date: date || new Date().toISOString().split('T')[0],
-      description: description || 'Account Transfer',
-      accountId: fromAccountId,
-      toAccountId,
-      createdAt: new Date().toISOString(),
-    };
-
-    setTransactions((prev) => [newTx, ...prev]);
-    showToast('success', 'Transfer complete', `${formatCurrency(amount)} transferred successfully`);
-  };
-
-  // ---------------- TRANSACTIONS ----------------
-  const addTransaction = (data: Omit<Transaction, 'id' | 'createdAt'>) => {
-    const newTx: Transaction = {
-      ...data,
-      id: `tx-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Update account balances based on type
-    setAccounts((prev) =>
-      prev.map((acc) => {
-        if (data.type === 'INCOME' && acc.id === data.accountId) {
-          return { ...acc, balance: acc.balance + data.amount, updatedAt: new Date().toISOString() };
-        }
-        if (data.type === 'EXPENSE' && acc.id === data.accountId) {
-          return { ...acc, balance: acc.balance - data.amount, updatedAt: new Date().toISOString() };
-        }
-        if (data.type === 'TRANSFER') {
-          if (acc.id === data.accountId) {
-            return { ...acc, balance: acc.balance - data.amount, updatedAt: new Date().toISOString() };
-          }
-          if (acc.id === data.toAccountId) {
-            return { ...acc, balance: acc.balance + data.amount, updatedAt: new Date().toISOString() };
-          }
-        }
-        return acc;
-      })
-    );
-
-    setTransactions((prev) => [newTx, ...prev]);
-    showToast('success', 'Transaction saved', `${data.description} (${formatCurrency(data.amount)})`);
-  };
-
-  const updateTransaction = (id: string, updated: Partial<Transaction>) => {
-    const oldTx = transactions.find((t) => t.id === id);
-    if (!oldTx) return;
-
-    const merged = { ...oldTx, ...updated };
-
-    // Revert old transaction effect on balances
-    let balanceDeltas: Record<string, number> = {};
-    if (oldTx.type === 'INCOME') {
-      balanceDeltas[oldTx.accountId] = (balanceDeltas[oldTx.accountId] || 0) - oldTx.amount;
-    } else if (oldTx.type === 'EXPENSE') {
-      balanceDeltas[oldTx.accountId] = (balanceDeltas[oldTx.accountId] || 0) + oldTx.amount;
-    } else if (oldTx.type === 'TRANSFER') {
-      balanceDeltas[oldTx.accountId] = (balanceDeltas[oldTx.accountId] || 0) + oldTx.amount;
-      if (oldTx.toAccountId) {
-        balanceDeltas[oldTx.toAccountId] = (balanceDeltas[oldTx.toAccountId] || 0) - oldTx.amount;
+      if (res.ok) {
+        const created = await res.json();
+        setTransactions((prev) => [created, ...prev]);
+        // Update local account balances
+        setAccounts((prev) =>
+          prev.map((acc) => {
+            if (acc.id === fromAccountId) return { ...acc, balance: acc.balance - amount };
+            if (acc.id === toAccountId) return { ...acc, balance: acc.balance + amount };
+            return acc;
+          })
+        );
+        showToast('success', 'Transfer Completed', 'Balances updated in database');
       }
+    } catch (err: any) {
+      showToast('error', 'Transfer Failed', err.message);
     }
+  };
 
-    // Apply new transaction effect on balances
-    if (merged.type === 'INCOME') {
-      balanceDeltas[merged.accountId] = (balanceDeltas[merged.accountId] || 0) + merged.amount;
-    } else if (merged.type === 'EXPENSE') {
-      balanceDeltas[merged.accountId] = (balanceDeltas[merged.accountId] || 0) - merged.amount;
-    } else if (merged.type === 'TRANSFER') {
-      balanceDeltas[merged.accountId] = (balanceDeltas[merged.accountId] || 0) - merged.amount;
-      if (merged.toAccountId) {
-        balanceDeltas[merged.toAccountId] = (balanceDeltas[merged.toAccountId] || 0) + merged.amount;
+  // Transaction operations
+  const addTransaction = async (txData: Omit<Transaction, 'id' | 'createdAt'>) => {
+    try {
+      const res = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(txData),
+      });
+
+      if (res.ok) {
+        const created = await res.json();
+        setTransactions((prev) => [created, ...prev]);
+
+        // Immediate balance adjustment
+        setAccounts((prev) =>
+          prev.map((acc) => {
+            if (acc.id === txData.accountId) {
+              const diff = txData.type === 'INCOME' ? txData.amount : -txData.amount;
+              return { ...acc, balance: acc.balance + diff };
+            }
+            if (txData.type === 'TRANSFER' && txData.toAccountId && acc.id === txData.toAccountId) {
+              return { ...acc, balance: acc.balance + txData.amount };
+            }
+            return acc;
+          })
+        );
+
+        showToast('success', 'Transaction Recorded', `${created.description} saved to database`);
       }
+    } catch (err: any) {
+      showToast('error', 'Transaction Failed', err.message);
     }
-
-    setAccounts((prev) =>
-      prev.map((acc) => {
-        const delta = balanceDeltas[acc.id] || 0;
-        return delta !== 0
-          ? { ...acc, balance: acc.balance + delta, updatedAt: new Date().toISOString() }
-          : acc;
-      })
-    );
-
-    setTransactions((prev) => prev.map((t) => (t.id === id ? merged : t)));
-    showToast('success', 'Transaction updated');
   };
 
-  const deleteTransaction = (id: string) => {
-    const tx = transactions.find((t) => t.id === id);
-    if (!tx) return;
-
-    // Revert impact on balance
-    setAccounts((prev) =>
-      prev.map((acc) => {
-        if (tx.type === 'INCOME' && acc.id === tx.accountId) {
-          return { ...acc, balance: acc.balance - tx.amount, updatedAt: new Date().toISOString() };
-        }
-        if (tx.type === 'EXPENSE' && acc.id === tx.accountId) {
-          return { ...acc, balance: acc.balance + tx.amount, updatedAt: new Date().toISOString() };
-        }
-        if (tx.type === 'TRANSFER') {
-          if (acc.id === tx.accountId) {
-            return { ...acc, balance: acc.balance + tx.amount, updatedAt: new Date().toISOString() };
-          }
-          if (acc.id === tx.toAccountId) {
-            return { ...acc, balance: acc.balance - tx.amount, updatedAt: new Date().toISOString() };
-          }
-        }
-        return acc;
-      })
-    );
-
-    setTransactions((prev) => prev.filter((t) => t.id !== id));
-    showToast('info', 'Transaction deleted');
+  const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
+    try {
+      setTransactions((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
+      showToast('success', 'Transaction Updated');
+    } catch (err: any) {
+      showToast('error', 'Update Failed', err.message);
+    }
   };
 
-  // ---------------- BUDGETS ----------------
-  const setBudget = (budgetData: Omit<Budget, 'id'>) => {
-    setBudgets((prev) => {
-      const existingIndex = prev.findIndex(
-        (b) =>
-          b.categoryId === budgetData.categoryId &&
-          b.month === budgetData.month &&
-          b.year === budgetData.year
-      );
+  const deleteTransaction = async (id: string) => {
+    try {
+      const target = transactions.find((t) => t.id === id);
+      const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
 
-      if (existingIndex >= 0) {
-        const copy = [...prev];
-        copy[existingIndex] = { ...copy[existingIndex], ...budgetData };
-        return copy;
+      if (res.ok) {
+        setTransactions((prev) => prev.filter((t) => t.id !== id));
+        if (target) {
+          setAccounts((prev) =>
+            prev.map((acc) => {
+              if (acc.id === target.accountId) {
+                const reversal = target.type === 'INCOME' ? -target.amount : target.amount;
+                return { ...acc, balance: acc.balance + reversal };
+              }
+              if (target.type === 'TRANSFER' && target.toAccountId && acc.id === target.toAccountId) {
+                return { ...acc, balance: acc.balance - target.amount };
+              }
+              return acc;
+            })
+          );
+        }
+        showToast('info', 'Transaction Deleted', 'Reversed from database');
       }
-      return [...prev, { ...budgetData, id: `bgt-${Date.now()}` }];
-    });
-    showToast('success', 'Budget configured', `Limit set to ${formatCurrency(budgetData.amountLimit)}`);
-  };
-
-  const deleteBudget = (id: string) => {
-    setBudgets((prev) => prev.filter((b) => b.id !== id));
-    showToast('info', 'Budget removed');
-  };
-
-  const clonePreviousMonthBudgets = (targetMonth: number, targetYear: number) => {
-    let sourceMonth = targetMonth - 1;
-    let sourceYear = targetYear;
-    if (sourceMonth === 0) {
-      sourceMonth = 12;
-      sourceYear = targetYear - 1;
+    } catch (err: any) {
+      showToast('error', 'Delete Failed', err.message);
     }
+  };
 
-    const sourceBudgets = budgets.filter((b) => b.month === sourceMonth && b.year === sourceYear);
-    if (sourceBudgets.length === 0) {
-      showToast('info', 'No prior budgets found', `No budgets recorded for ${sourceMonth}/${sourceYear}`);
+  // Budget operations
+  const setBudget = async (budgetData: Omit<Budget, 'id'>) => {
+    try {
+      const res = await fetch('/api/budgets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(budgetData),
+      });
+
+      if (res.ok) {
+        const saved = await res.json();
+        setBudgets((prev) => {
+          const idx = prev.findIndex(
+            (b) =>
+              b.categoryId === budgetData.categoryId &&
+              b.month === budgetData.month &&
+              b.year === budgetData.year
+          );
+          if (idx !== -1) {
+            const updated = [...prev];
+            updated[idx] = saved;
+            return updated;
+          }
+          return [...prev, saved];
+        });
+        showToast('success', 'Budget Saved', 'Category target saved to database');
+      }
+    } catch (err: any) {
+      showToast('error', 'Budget Failed', err.message);
+    }
+  };
+
+  const deleteBudget = async (id: string) => {
+    try {
+      const res = await fetch(`/api/budgets/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setBudgets((prev) => prev.filter((b) => b.id !== id));
+        showToast('info', 'Budget Removed');
+      }
+    } catch (err: any) {
+      showToast('error', 'Delete Failed', err.message);
+    }
+  };
+
+  const clonePreviousMonthBudgets = async (targetMonth: number, targetYear: number) => {
+    const prevMonth = targetMonth === 1 ? 12 : targetMonth - 1;
+    const prevYear = targetMonth === 1 ? targetYear - 1 : targetYear;
+    const previousBudgets = budgets.filter((b) => b.month === prevMonth && b.year === prevYear);
+
+    if (previousBudgets.length === 0) {
+      showToast('info', 'No Prior Budgets', `No budget records found for ${prevMonth}/${prevYear}`);
       return;
     }
 
-    setBudgets((prev) => {
-      // Remove any existing budgets in target month
-      const filtered = prev.filter((b) => !(b.month === targetMonth && b.year === targetYear));
-      const cloned = sourceBudgets.map((b) => ({
-        ...b,
-        id: `bgt-${Date.now()}-${b.categoryId}`,
+    for (const b of previousBudgets) {
+      await setBudget({
+        categoryId: b.categoryId,
+        amountLimit: b.amountLimit,
         month: targetMonth,
         year: targetYear,
-      }));
-      return [...filtered, ...cloned];
-    });
-
-    showToast('success', 'Budgets rolled over', `Copied ${sourceBudgets.length} budgets from previous month`);
-  };
-
-  // ---------------- SAVINGS GOALS ----------------
-  const addSavingsGoal = (goalData: Omit<SavingsGoal, 'id'>) => {
-    const newGoal: SavingsGoal = {
-      ...goalData,
-      id: `goal-${Date.now()}`,
-    };
-    setSavingsGoals((prev) => [...prev, newGoal]);
-    showToast('success', 'Savings Goal created', `Target: ${formatCurrency(newGoal.targetAmount)}`);
-  };
-
-  const updateSavingsGoal = (id: string, goalData: Partial<SavingsGoal>) => {
-    setSavingsGoals((prev) =>
-      prev.map((g) => (g.id === id ? { ...g, ...goalData } : g))
-    );
-    showToast('success', 'Goal updated');
-  };
-
-  const deleteSavingsGoal = (id: string) => {
-    setSavingsGoals((prev) => prev.filter((g) => g.id !== id));
-    showToast('info', 'Goal deleted');
-  };
-
-  const depositToGoal = (goalId: string, fromAccountId: string, amount: number) => {
-    const goal = savingsGoals.find((g) => g.id === goalId);
-    const account = accounts.find((a) => a.id === fromAccountId);
-    if (!goal || !account) return;
-
-    if (amount <= 0) {
-      showToast('error', 'Invalid deposit', 'Amount must be greater than zero');
-      return;
-    }
-
-    // Deduct from account
-    setAccounts((prev) =>
-      prev.map((a) => (a.id === fromAccountId ? { ...a, balance: a.balance - amount, updatedAt: new Date().toISOString() } : a))
-    );
-
-    // Add to goal
-    const updatedCurrent = goal.currentAmount + amount;
-    const reachedGoal = updatedCurrent >= goal.targetAmount && goal.currentAmount < goal.targetAmount;
-
-    setSavingsGoals((prev) =>
-      prev.map((g) => (g.id === goalId ? { ...g, currentAmount: updatedCurrent } : g))
-    );
-
-    // Record as transfer transaction
-    const newTx: Transaction = {
-      id: `tx-${Date.now()}`,
-      amount,
-      type: 'EXPENSE',
-      date: new Date().toISOString().split('T')[0],
-      description: `Savings Deposit: ${goal.name}`,
-      accountId: fromAccountId,
-      notes: `Allocated to savings goal "${goal.name}"`,
-      createdAt: new Date().toISOString(),
-    };
-    setTransactions((prev) => [newTx, ...prev]);
-
-    if (reachedGoal) {
-      confetti({
-        particleCount: 120,
-        spread: 70,
-        origin: { y: 0.6 },
       });
-      showToast('success', '🎉 Target Reached!', `You fully funded "${goal.name}"! Outstanding job!`);
-    } else {
-      showToast('success', 'Deposit saved', `Added ${formatCurrency(amount)} to "${goal.name}"`);
+    }
+
+    showToast('success', 'Budgets Rolled Over', `Copied ${previousBudgets.length} budgets to current month`);
+  };
+
+  // Savings Goal operations
+  const addSavingsGoal = async (goalData: Omit<SavingsGoal, 'id'>) => {
+    try {
+      const res = await fetch('/api/savings-goals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(goalData),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setSavingsGoals((prev) => [created, ...prev]);
+        showToast('success', 'Goal Created', `${created.name} saved to database`);
+      }
+    } catch (err: any) {
+      showToast('error', 'Goal Failed', err.message);
     }
   };
 
-  const withdrawFromGoal = (goalId: string, toAccountId: string, amount: number) => {
+  const updateSavingsGoal = async (id: string, updates: Partial<SavingsGoal>) => {
+    try {
+      const res = await fetch(`/api/savings-goals/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setSavingsGoals((prev) => prev.map((g) => (g.id === id ? { ...g, ...updated } : g)));
+        showToast('success', 'Goal Updated');
+      }
+    } catch (err: any) {
+      showToast('error', 'Update Failed', err.message);
+    }
+  };
+
+  const deleteSavingsGoal = async (id: string) => {
+    try {
+      const res = await fetch(`/api/savings-goals/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setSavingsGoals((prev) => prev.filter((g) => g.id !== id));
+        showToast('info', 'Goal Removed');
+      }
+    } catch (err: any) {
+      showToast('error', 'Delete Failed', err.message);
+    }
+  };
+
+  const depositToGoal = async (goalId: string, fromAccountId: string, amount: number) => {
     const goal = savingsGoals.find((g) => g.id === goalId);
     if (!goal) return;
 
-    if (amount <= 0 || amount > goal.currentAmount) {
-      showToast('error', 'Invalid amount', 'Cannot withdraw more than current saved balance');
-      return;
+    const newAmount = goal.currentAmount + amount;
+    await updateSavingsGoal(goalId, { currentAmount: newAmount });
+
+    // Deduct from account
+    const acc = accounts.find((a) => a.id === fromAccountId);
+    if (acc) {
+      await updateAccount(fromAccountId, { balance: acc.balance - amount });
     }
+
+    if (newAmount >= goal.targetAmount) {
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      showToast('success', 'Goal Completed!', `You reached 100% of your target for ${goal.name}!`);
+    } else {
+      showToast('success', 'Deposit Recorded', `Added to ${goal.name}`);
+    }
+  };
+
+  const withdrawFromGoal = async (goalId: string, toAccountId: string, amount: number) => {
+    const goal = savingsGoals.find((g) => g.id === goalId);
+    if (!goal) return;
+
+    const newAmount = Math.max(0, goal.currentAmount - amount);
+    await updateSavingsGoal(goalId, { currentAmount: newAmount });
 
     // Add to account
-    setAccounts((prev) =>
-      prev.map((a) => (a.id === toAccountId ? { ...a, balance: a.balance + amount, updatedAt: new Date().toISOString() } : a))
-    );
-
-    // Deduct from goal
-    setSavingsGoals((prev) =>
-      prev.map((g) => (g.id === goalId ? { ...g, currentAmount: g.currentAmount - amount } : g))
-    );
-
-    // Record transaction
-    const newTx: Transaction = {
-      id: `tx-${Date.now()}`,
-      amount,
-      type: 'INCOME',
-      date: new Date().toISOString().split('T')[0],
-      description: `Savings Withdrawal: ${goal.name}`,
-      accountId: toAccountId,
-      notes: `Withdrawn from savings goal "${goal.name}"`,
-      createdAt: new Date().toISOString(),
-    };
-    setTransactions((prev) => [newTx, ...prev]);
-
-    showToast('info', 'Withdrawal recorded', `${formatCurrency(amount)} returned to account`);
-  };
-
-  // ---------------- RECURRING ----------------
-  const addRecurring = (recData: Omit<RecurringTransaction, 'id'>) => {
-    const newRec: RecurringTransaction = {
-      ...recData,
-      id: `rec-${Date.now()}`,
-    };
-    setRecurring((prev) => [...prev, newRec]);
-    showToast('success', 'Recurring transaction registered', `"${newRec.description}" (${newRec.frequency})`);
-  };
-
-  const updateRecurring = (id: string, recData: Partial<RecurringTransaction>) => {
-    setRecurring((prev) => prev.map((r) => (r.id === id ? { ...r, ...recData } : r)));
-    showToast('success', 'Recurring item updated');
-  };
-
-  const deleteRecurring = (id: string) => {
-    setRecurring((prev) => prev.filter((r) => r.id !== id));
-    showToast('info', 'Recurring item removed');
-  };
-
-  const advanceNextDueDate = (currentDateStr: string, frequency: Frequency): string => {
-    const d = new Date(currentDateStr);
-    if (frequency === 'WEEKLY') {
-      d.setDate(d.getDate() + 7);
-    } else if (frequency === 'MONTHLY') {
-      d.setMonth(d.getMonth() + 1);
-    } else if (frequency === 'YEARLY') {
-      d.setFullYear(d.getFullYear() + 1);
+    const acc = accounts.find((a) => a.id === toAccountId);
+    if (acc) {
+      await updateAccount(toAccountId, { balance: acc.balance + amount });
     }
-    return d.toISOString().split('T')[0];
+
+    showToast('info', 'Funds Withdrawn', `Transferred back to ${acc?.name || 'account'}`);
   };
 
-  const executeDueRecurring = (id: string) => {
+  // Recurring operations
+  const addRecurring = async (recData: Omit<RecurringTransaction, 'id'>) => {
+    try {
+      const res = await fetch('/api/recurring', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(recData),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setRecurring((prev) => [created, ...prev]);
+        showToast('success', 'Subscription Saved', `${created.description} recorded`);
+      }
+    } catch (err: any) {
+      showToast('error', 'Recurring Failed', err.message);
+    }
+  };
+
+  const updateRecurring = async (id: string, updates: Partial<RecurringTransaction>) => {
+    setRecurring((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)));
+    showToast('success', 'Recurring Updated');
+  };
+
+  const deleteRecurring = async (id: string) => {
+    try {
+      const res = await fetch(`/api/recurring/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setRecurring((prev) => prev.filter((r) => r.id !== id));
+        showToast('info', 'Recurring Schedule Deleted');
+      }
+    } catch (err: any) {
+      showToast('error', 'Delete Failed', err.message);
+    }
+  };
+
+  const executeDueRecurring = async (id: string) => {
     const item = recurring.find((r) => r.id === id);
     if (!item) return;
 
-    // Add transaction
-    addTransaction({
+    await addTransaction({
       amount: item.amount,
       type: item.type,
       date: new Date().toISOString().split('T')[0],
-      description: `${item.description} (Auto-recurring)`,
+      description: item.description,
       categoryId: item.categoryId,
       accountId: item.accountId,
       isRecurring: true,
-      notes: `Executed from recurring rule (${item.frequency})`,
+      notes: `Automated recurring payment (${item.frequency.toLowerCase()})`,
     });
 
     // Advance next due date
-    const nextDate = advanceNextDueDate(item.nextDueDate, item.frequency);
-    setRecurring((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, nextDueDate: nextDate } : r))
-    );
+    const d = new Date(item.nextDueDate);
+    if (item.frequency === 'WEEKLY') d.setDate(d.getDate() + 7);
+    else if (item.frequency === 'MONTHLY') d.setMonth(d.getMonth() + 1);
+    else if (item.frequency === 'YEARLY') d.setFullYear(d.getFullYear() + 1);
 
-    showToast('success', 'Recurring bill logged', `Next due date scheduled for ${nextDate}`);
+    await updateRecurring(id, { nextDueDate: d.toISOString().split('T')[0] });
+    showToast('success', 'Payment Recorded', `Logged ${item.description}`);
   };
 
-  // ---------------- CATEGORIES ----------------
-  const addCategory = (catData: Omit<Category, 'id'>) => {
-    const newCat: Category = {
-      ...catData,
-      id: `cat-${Date.now()}`,
-    };
-    setCategories((prev) => [...prev, newCat]);
-    showToast('success', 'Category added', newCat.name);
+  // Category operations
+  const addCategory = async (catData: Omit<Category, 'id'>) => {
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(catData),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setCategories((prev) => [...prev, created]);
+        showToast('success', 'Category Created');
+      }
+    } catch (err: any) {
+      showToast('error', 'Category Failed', err.message);
+    }
   };
 
-  const updateCategory = (id: string, catData: Partial<Category>) => {
+  const updateCategory = async (id: string, catData: Partial<Category>) => {
     setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...catData } : c)));
-    showToast('success', 'Category modified');
   };
 
-  const deleteCategory = (id: string) => {
+  const deleteCategory = async (id: string) => {
     setCategories((prev) => prev.filter((c) => c.id !== id));
-    showToast('info', 'Category removed');
   };
 
-  // ---------------- EXPORTS & IMPORTS ----------------
-  const exportToCSV = (filteredTransactions?: Transaction[]) => {
-    const txList = filteredTransactions || transactions;
-    const headers = ['ID', 'Date', 'Type', 'Amount', 'Description', 'Category', 'Account', 'To Account', 'Recurring', 'Notes'];
+  // Helpers
+  const formatCurrency = useCallback(
+    (amount: number, customCurrency?: string) => {
+      const targetCurrency = customCurrency || currency;
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: targetCurrency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(amount);
+    },
+    [currency]
+  );
 
-    const rows = txList.map((tx) => {
-      const cat = categories.find((c) => c.id === tx.categoryId)?.name || 'Uncategorized';
-      const acc = accounts.find((a) => a.id === tx.accountId)?.name || 'Unknown';
-      const toAcc = tx.toAccountId ? accounts.find((a) => a.id === tx.toAccountId)?.name || '' : '';
+  const exportToCSV = (filteredTransactions?: Transaction[]) => {
+    const dataToExport = filteredTransactions || transactions;
+    if (dataToExport.length === 0) {
+      showToast('info', 'No Transactions', 'No transaction logs available to export');
+      return;
+    }
+
+    const headers = ['Date', 'Description', 'Type', 'Amount', 'Category', 'Account', 'Notes', 'Tags'];
+    const rows = dataToExport.map((t) => {
+      const cat = categories.find((c) => c.id === t.categoryId)?.name || 'Uncategorized';
+      const acc = accounts.find((a) => a.id === t.accountId)?.name || 'Unknown Account';
       return [
-        tx.id,
-        tx.date,
-        tx.type,
-        tx.amount.toFixed(2),
-        `"${tx.description.replace(/"/g, '""')}"`,
-        `"${cat.replace(/"/g, '""')}"`,
-        `"${acc.replace(/"/g, '""')}"`,
-        `"${toAcc.replace(/"/g, '""')}"`,
-        tx.isRecurring ? 'Yes' : 'No',
-        `"${(tx.notes || '').replace(/"/g, '""')}"`,
+        t.date,
+        `"${t.description.replace(/"/g, '""')}"`,
+        t.type,
+        t.amount.toFixed(2),
+        `"${cat}"`,
+        `"${acc}"`,
+        `"${(t.notes || '').replace(/"/g, '""')}"`,
+        `"${(t.tags || []).join(', ')}"`,
       ].join(',');
     });
 
@@ -657,33 +668,33 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     link.setAttribute('download', `auraledger-transactions-${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
 
-    showToast('success', 'CSV exported', `Exported ${txList.length} transaction rows`);
+    showToast('success', 'CSV Exported', `Downloaded ${dataToExport.length} transactions`);
   };
 
   const exportBackupJSON = () => {
     const backupData = {
-      version: 1,
-      timestamp: new Date().toISOString(),
+      version: '2.0.0',
+      exportedAt: new Date().toISOString(),
+      currency,
       accounts,
       categories,
       transactions,
       budgets,
       savingsGoals,
       recurring,
-      currency,
     };
 
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `auraledger-backup-${new Date().toISOString().split('T')[0]}.json`);
+    downloadAnchor.setAttribute('download', `auraledger-database-export-${new Date().toISOString().split('T')[0]}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
 
-    showToast('success', 'Backup exported', 'Full database snapshot saved');
+    showToast('success', 'Backup Exported', 'Full database snapshot downloaded');
   };
 
   const importBackupJSON = (jsonString: string): boolean => {
@@ -700,25 +711,25 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (data.recurring) setRecurring(data.recurring);
       if (data.currency) setCurrencyState(data.currency);
 
-      showToast('success', 'Backup restored successfully');
+      showToast('success', 'Backup Restored', 'Data imported successfully');
       return true;
     } catch {
-      showToast('error', 'Restore failed', 'Provided JSON file is invalid or corrupted');
+      showToast('error', 'Restore Failed', 'JSON file is invalid or corrupted');
       return false;
     }
   };
 
-  const resetDemoData = () => {
-    setAccounts(INITIAL_ACCOUNTS);
-    setCategories(INITIAL_CATEGORIES);
-    setTransactions(INITIAL_TRANSACTIONS);
-    setBudgets(INITIAL_BUDGETS);
-    setSavingsGoals(INITIAL_SAVINGS_GOALS);
-    setRecurring(INITIAL_RECURRING);
-    showToast('info', 'Demo data reset', 'Restored default sample finance records');
-  };
+  const clearAllData = async (keepCategories = true) => {
+    try {
+      await fetch('/api/database/clear-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keepCategories }),
+      });
+    } catch {
+      // ignore
+    }
 
-  const clearAllData = (keepCategories = true) => {
     setAccounts([]);
     setTransactions([]);
     setBudgets([]);
@@ -727,12 +738,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!keepCategories) {
       setCategories([]);
     }
+
     showToast(
       'info',
-      'Workspace Cleared',
+      'Database Cleared',
       keepCategories
-        ? 'Demo data wiped. Standard categories kept for quick setup.'
-        : 'All records and categories completely cleared. Ready for your real data.'
+        ? 'All accounts, transactions, and budgets wiped. Standard categories retained.'
+        : 'All records and category taxonomies completely cleared.'
     );
   };
 
@@ -748,11 +760,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         currency,
         theme,
         toasts,
+        isLoading,
+        dbStatus,
         setCurrency,
         setTheme,
         toggleTheme,
         showToast,
         removeToast,
+        refreshData,
         addAccount,
         updateAccount,
         deleteAccount,
@@ -779,7 +794,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         exportToCSV,
         exportBackupJSON,
         importBackupJSON,
-        resetDemoData,
         clearAllData,
       }}
     >

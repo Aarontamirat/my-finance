@@ -30,8 +30,8 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({ onOpenBudgetModal }) =
     formatCurrency,
   } = useFinance();
 
-  const [currentMonth, setCurrentMonth] = useState<number>(10); // October
-  const [currentYear, setCurrentYear] = useState<number>(2026);
+  const [currentMonth, setCurrentMonth] = useState<number>(() => new Date().getMonth() + 1);
+  const [currentYear, setCurrentYear] = useState<number>(() => new Date().getFullYear());
   const [budgetToDelete, setBudgetToDelete] = useState<string | null>(null);
 
   const monthNames = [

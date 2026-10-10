@@ -34,17 +34,17 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({ isOpen, onClose 
           </div>
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-              Clear Demo Data & Start Fresh
+              Clear Database & Start Fresh
             </h3>
             <p className="text-xs text-slate-500">
-              Prepare your ledger for your own personal finances
+              Reset database tables to a blank state for your real data
             </p>
           </div>
         </div>
 
         <div className="text-xs text-slate-600 dark:text-slate-300 space-y-3 mb-5">
           <p>
-            This action will remove all sample accounts (Checking, High Yield, Robinhood, etc.), transactions, recurring bills, and budgets.
+            This action will delete all accounts, transactions, recurring bills, and budgets from the database.
           </p>
 
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2">

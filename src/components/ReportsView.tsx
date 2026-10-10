@@ -38,17 +38,17 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onOpenDatabaseModal })
     exportToCSV,
     exportBackupJSON,
     importBackupJSON,
-    resetDemoData,
+    refreshData,
     currency,
   } = useFinance();
 
-  const [selectedYear, setSelectedYear] = useState<number>(2026);
+  const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
   const [importJsonText, setImportJsonText] = useState<string>('');
   const [showImportModal, setShowImportModal] = useState<boolean>(false);
   const [showClearDataModal, setShowClearDataModal] = useState<boolean>(false);
   const [showDatabaseModal, setShowDatabaseModal] = useState<boolean>(false);
 
-  // 1. Annual Breakdown (Months 01 through 10 of 2026)
+  // 1. Annual Breakdown (All 12 Months of selectedYear from real database records)
   const annualMonthlyData = useMemo(() => {
     const months = [
       { key: '01', name: 'Jan' },
@@ -61,6 +61,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onOpenDatabaseModal })
       { key: '08', name: 'Aug' },
       { key: '09', name: 'Sep' },
       { key: '10', name: 'Oct' },
+      { key: '11', name: 'Nov' },
+      { key: '12', name: 'Dec' },
     ];
 
     return months.map(({ key, name }) => {
@@ -68,18 +70,16 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onOpenDatabaseModal })
       const mTx = transactions.filter((t) => t.date.startsWith(prefix));
       const income = mTx.filter((t) => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
       const expense = mTx.filter((t) => t.type === 'EXPENSE').reduce((s, t) => s + t.amount, 0);
+      const savings = income - expense;
 
-      // Baseline estimates for early months if mock has only recent
-      const adjIncome = income > 0 ? income : (parseInt(key) < 7 ? 8000 : income);
-      const adjExpense = expense > 0 ? expense : (parseInt(key) < 7 ? 3100 : expense);
-      const savings = adjIncome - adjExpense;
+      const rate = income > 0 ? Math.round((savings / income) * 100) : 0;
 
       return {
         month: name,
-        income: adjIncome,
-        expense: adjExpense,
+        income,
+        expense,
         savings,
-        rate: adjIncome > 0 ? Math.round((savings / adjIncome) * 100) : 0,
+        rate,
       };
     });
   }, [transactions, selectedYear]);
@@ -368,17 +368,17 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onOpenDatabaseModal })
               </label>
             </div>
 
-            {/* Reset Demo Data */}
+            {/* Sync / Refresh Database Records */}
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Reset Demo Data</p>
-                <p className="text-[11px] text-slate-500">Restore rich default demonstration records</p>
+                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Sync with Database</p>
+                <p className="text-[11px] text-slate-500">Re-fetch latest records from PostgreSQL / Neon backend</p>
               </div>
               <button
-                onClick={resetDemoData}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+                onClick={() => refreshData()}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 transition-colors"
               >
-                Reset Demo
+                Sync Now
               </button>
             </div>
           </div>

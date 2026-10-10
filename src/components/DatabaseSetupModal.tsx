@@ -26,7 +26,7 @@ export const DatabaseSetupModal: React.FC<DatabaseSetupModalProps> = ({
   onClose,
   onOpenClearData,
 }) => {
-  const { showToast } = useFinance();
+  const { showToast, dbStatus } = useFinance();
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'status' | 'local' | 'neon'>('status');
 
@@ -135,11 +135,12 @@ DIRECT_URL="postgresql://neondb_owner:YOUR_PASSWORD@ep-sample-123456.us-east-2.a
               <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs">
                 <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold mb-1">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Current App Engine: Browser LocalStorage (Zero Server Dependency)</span>
+                  <span>Engine: {dbStatus.engine}</span>
                 </div>
                 <p className="text-slate-600 dark:text-slate-300">
-                  This applet operates with an instant, private, offline-capable local storage engine.
-                  Every transaction, account, category, and budget is saved in your browser’s persistent storage.
+                  {dbStatus.connected
+                    ? 'Connected directly to your PostgreSQL database. All mutations are stored permanently in database tables.'
+                    : 'The full-stack Express and Prisma ORM backend is active. Add your Neon DATABASE_URL in .env to connect to your live database instance.'}
                 </p>
               </div>
 
@@ -147,10 +148,10 @@ DIRECT_URL="postgresql://neondb_owner:YOUR_PASSWORD@ep-sample-123456.us-east-2.a
                 <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800">
                   <div className="font-semibold text-slate-900 dark:text-slate-100 mb-1 flex items-center gap-1.5">
                     <Zap className="w-4 h-4 text-amber-500" />
-                    How to use with Real Data right now
+                    Reset or Clear Database
                   </div>
                   <p className="text-slate-500 dark:text-slate-400 mb-3">
-                    You do not need to install anything! Click the button below to wipe the mock demo data. You can keep standard categories or start completely blank.
+                    Wipe all records across database tables to reset to a completely blank ledger.
                   </p>
                   <button
                     onClick={() => {
@@ -159,27 +160,27 @@ DIRECT_URL="postgresql://neondb_owner:YOUR_PASSWORD@ep-sample-123456.us-east-2.a
                     }}
                     className="w-full py-2 px-3 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold transition-colors flex items-center justify-center gap-1.5"
                   >
-                    Wipe Demo & Start Fresh
+                    Clear Database
                   </button>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800">
                   <div className="font-semibold text-slate-900 dark:text-slate-100 mb-1 flex items-center gap-1.5">
                     <FileCode className="w-4 h-4 text-indigo-500" />
-                    Prisma Schema Ready
+                    Prisma Schema & Neon Pooler
                   </div>
                   <p className="text-slate-500 dark:text-slate-400">
-                    The repository includes <code className="text-emerald-600 dark:text-emerald-400 font-mono">prisma/schema.prisma</code> and <code className="text-emerald-600 dark:text-emerald-400 font-mono">.env.example</code> matching all Models: Account, Category, Transaction, Budget, SavingsGoal, and RecurringTransaction.
+                    <code className="text-emerald-600 dark:text-emerald-400 font-mono">prisma/schema.prisma</code> models: Account, Category, Transaction, Budget, SavingsGoal, and RecurringTransaction with connection pooling and direct migration URLs.
                   </p>
                 </div>
               </div>
 
               <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-xs">
                 <span className="font-semibold text-slate-900 dark:text-slate-100 block mb-1">
-                  Why isn’t an external database connected by default?
+                  How your Neon Database connects:
                 </span>
                 <p className="text-slate-500 dark:text-slate-400">
-                  Connecting to a real PostgreSQL database requires your private database credentials and passwords (<code className="font-mono">DATABASE_URL</code>). Cloud databases should never have passwords committed into public source code. Follow the tabs above to connect your own Neon instance or local Postgres.
+                  When you download this repo and run it on your machine, your secret <code className="font-mono">DATABASE_URL</code> and <code className="font-mono">DIRECT_URL</code> in <code className="font-mono">.env</code> route all queries through Prisma Client directly to your Neon PostgreSQL cluster.
                 </p>
               </div>
             </div>

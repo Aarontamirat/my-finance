@@ -42,7 +42,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [selectedAccountId, setSelectedAccountId] = useState<string>(defaultAccountId || 'ALL');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('ALL');
-  const [dateRange, setDateRange] = useState<string>('THIS_MONTH'); // 'THIS_MONTH', 'LAST_MONTH', 'ALL_TIME'
+  const [dateRange, setDateRange] = useState<string>('ALL_TIME'); // 'ALL_TIME', 'THIS_MONTH', 'LAST_MONTH'
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc'>('date-desc');
   const [txToDelete, setTxToDelete] = useState<string | null>(null);
 
@@ -75,10 +75,15 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       }
 
       // 5. Date Range Filter
+      const now = new Date();
+      const thisMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthPrefix = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
       if (dateRange === 'THIS_MONTH') {
-        if (!tx.date.startsWith('2026-10')) return false;
+        if (!tx.date.startsWith(thisMonthPrefix)) return false;
       } else if (dateRange === 'LAST_MONTH') {
-        if (!tx.date.startsWith('2026-09')) return false;
+        if (!tx.date.startsWith(lastMonthPrefix)) return false;
       }
 
       return true;
@@ -125,7 +130,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     setSelectedType('ALL');
     setSelectedAccountId('ALL');
     setSelectedCategoryId('ALL');
-    setDateRange('THIS_MONTH');
+    setDateRange('ALL_TIME');
   };
 
   const hasActiveFilters =
@@ -133,7 +138,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     selectedType !== 'ALL' ||
     selectedAccountId !== 'ALL' ||
     selectedCategoryId !== 'ALL' ||
-    dateRange !== 'THIS_MONTH';
+    dateRange !== 'ALL_TIME';
 
   return (
     <div className="space-y-6 animate-fade-in pb-12 transition-colors duration-200">
@@ -231,9 +236,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               onChange={(e) => setDateRange(e.target.value)}
               className="w-1/2 px-2.5 py-2 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
             >
-              <option value="THIS_MONTH">October 2026</option>
-              <option value="LAST_MONTH">September 2026</option>
               <option value="ALL_TIME">All Time</option>
+              <option value="THIS_MONTH">This Month</option>
+              <option value="LAST_MONTH">Last Month</option>
             </select>
             <select
               value={sortBy}
