@@ -18,6 +18,8 @@ import { BudgetModal } from './components/BudgetModal';
 import { SavingsGoalModal } from './components/SavingsGoalModal';
 import { GoalActionModal } from './components/GoalActionModal';
 import { RecurringModal } from './components/RecurringModal';
+import { DatabaseSetupModal } from './components/DatabaseSetupModal';
+import { ClearDataModal } from './components/ClearDataModal';
 
 // Types
 import { Transaction, Account, Budget, SavingsGoal, RecurringTransaction } from './types/finance';
@@ -53,6 +55,9 @@ function FinanceApp() {
 
   const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
   const [selectedRecurring, setSelectedRecurring] = useState<RecurringTransaction | null>(null);
+
+  const [isDatabaseModalOpen, setIsDatabaseModalOpen] = useState(false);
+  const [isClearDataModalOpen, setIsClearDataModalOpen] = useState(false);
 
   // Drilldown filter for transactions
   const [transactionsFilterAccount, setTransactionsFilterAccount] = useState<string | null>(null);
@@ -127,6 +132,7 @@ function FinanceApp() {
           setCurrentTab(tab);
         }}
         onOpenQuickTransaction={() => handleOpenTransactionModal()}
+        onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
       />
 
       {/* Mobile Top Header */}
@@ -142,6 +148,8 @@ function FinanceApp() {
           <DashboardView
             onOpenTransactionModal={() => handleOpenTransactionModal()}
             onOpenTransferModal={() => handleOpenTransferModal()}
+            onOpenAccountModal={() => handleOpenAccountModal()}
+            onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
             onNavigateTab={setCurrentTab}
             onEditTransaction={(tx) => handleOpenTransactionModal(tx)}
           />
@@ -177,7 +185,9 @@ function FinanceApp() {
           <RecurringView onOpenRecurringModal={handleOpenRecurringModal} />
         )}
 
-        {currentTab === 'reports' && <ReportsView />}
+        {currentTab === 'reports' && (
+          <ReportsView onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)} />
+        )}
       </main>
 
       {/* Mobile Bottom Navigation */}
@@ -232,6 +242,17 @@ function FinanceApp() {
         isOpen={isRecurringModalOpen}
         onClose={() => setIsRecurringModalOpen(false)}
         initialRecurring={selectedRecurring}
+      />
+
+      <DatabaseSetupModal
+        isOpen={isDatabaseModalOpen}
+        onClose={() => setIsDatabaseModalOpen(false)}
+        onOpenClearData={() => setIsClearDataModalOpen(true)}
+      />
+
+      <ClearDataModal
+        isOpen={isClearDataModalOpen}
+        onClose={() => setIsClearDataModalOpen(false)}
       />
 
       {/* Floating Toasts Container */}

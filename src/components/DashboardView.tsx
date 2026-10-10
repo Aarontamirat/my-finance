@@ -34,6 +34,8 @@ import { CategoryIcon } from './CategoryIcon';
 interface DashboardViewProps {
   onOpenTransactionModal: () => void;
   onOpenTransferModal: () => void;
+  onOpenAccountModal?: () => void;
+  onOpenDatabaseModal?: () => void;
   onNavigateTab: (tab: string) => void;
   onEditTransaction: (tx: any) => void;
 }
@@ -41,6 +43,8 @@ interface DashboardViewProps {
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenTransactionModal,
   onOpenTransferModal,
+  onOpenAccountModal,
+  onOpenDatabaseModal,
   onNavigateTab,
   onEditTransaction,
 }) => {
@@ -233,6 +237,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Empty Slate / Real Data Onboarding Banner */}
+      {accounts.length === 0 && (
+        <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-sky-500/10 border border-emerald-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                Workspace is clear and ready for your real data!
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Add your real bank account, cash wallet, or credit card to begin tracking personal wealth.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {onOpenAccountModal && (
+              <button
+                onClick={onOpenAccountModal}
+                className="px-3.5 py-2 text-xs font-semibold rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white dark:text-slate-950 transition-colors shadow-sm"
+              >
+                + Add First Account
+              </button>
+            )}
+            {onOpenDatabaseModal && (
+              <button
+                onClick={onOpenDatabaseModal}
+                className="px-3.5 py-2 text-xs font-semibold rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                Database Guide
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Due Recurring Transactions Banner (if any) */}
       {dueRecurringItems.length > 0 && (

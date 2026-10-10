@@ -86,6 +86,7 @@ interface FinanceContextType {
   exportBackupJSON: () => void;
   importBackupJSON: (jsonData: string) => boolean;
   resetDemoData: () => void;
+  clearAllData: (keepCategories?: boolean) => void;
 }
 
 const STORAGE_KEY = 'auraledger_state_v1';
@@ -717,6 +718,24 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     showToast('info', 'Demo data reset', 'Restored default sample finance records');
   };
 
+  const clearAllData = (keepCategories = true) => {
+    setAccounts([]);
+    setTransactions([]);
+    setBudgets([]);
+    setSavingsGoals([]);
+    setRecurring([]);
+    if (!keepCategories) {
+      setCategories([]);
+    }
+    showToast(
+      'info',
+      'Workspace Cleared',
+      keepCategories
+        ? 'Demo data wiped. Standard categories kept for quick setup.'
+        : 'All records and categories completely cleared. Ready for your real data.'
+    );
+  };
+
   return (
     <FinanceContext.Provider
       value={{
@@ -761,6 +780,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         exportBackupJSON,
         importBackupJSON,
         resetDemoData,
+        clearAllData,
       }}
     >
       {children}

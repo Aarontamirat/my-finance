@@ -23,8 +23,14 @@ import {
   Tooltip,
   CartesianGrid
 } from 'recharts';
+import { ClearDataModal } from './ClearDataModal';
+import { DatabaseSetupModal } from './DatabaseSetupModal';
 
-export const ReportsView: React.FC = () => {
+interface ReportsViewProps {
+  onOpenDatabaseModal?: () => void;
+}
+
+export const ReportsView: React.FC<ReportsViewProps> = ({ onOpenDatabaseModal }) => {
   const {
     transactions,
     categories,
@@ -39,6 +45,8 @@ export const ReportsView: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState<number>(2026);
   const [importJsonText, setImportJsonText] = useState<string>('');
   const [showImportModal, setShowImportModal] = useState<boolean>(false);
+  const [showClearDataModal, setShowClearDataModal] = useState<boolean>(false);
+  const [showDatabaseModal, setShowDatabaseModal] = useState<boolean>(false);
 
   // 1. Annual Breakdown (Months 01 through 10 of 2026)
   const annualMonthlyData = useMemo(() => {
@@ -276,16 +284,59 @@ export const ReportsView: React.FC = () => {
         {/* Data Management & Storage Management */}
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between space-y-4 transition-colors duration-200">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              Data Management & Backup
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                Data & Database Management
+              </h3>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                Postgres Ready
+              </span>
+            </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Secure local database snapshots, restore archives, or load original defaults.
+              Manage your local ledger, wipe mock data, or connect PostgreSQL on your machine.
             </p>
           </div>
 
           <div className="space-y-3">
+            {/* Database & Local Machine Guide Banner */}
+            <div className="p-3.5 rounded-xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/25 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                  Database & Machine Setup Guide
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Prisma schema, Neon connection strings, and local terminal commands
+                </p>
+              </div>
+              <button
+                onClick={() => (onOpenDatabaseModal ? onOpenDatabaseModal() : setShowDatabaseModal(true))}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500 hover:bg-emerald-400 dark:bg-emerald-400 dark:hover:bg-emerald-300 text-white dark:text-slate-950 transition-colors shadow-xs"
+              >
+                Setup Guide
+              </button>
+            </div>
+
+            {/* Wipe Demo & Start Fresh with Real Data */}
+            <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                  Start Fresh with Real Data
+                </p>
+                <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80">
+                  Wipe mock accounts and sample logs to record your own real finances
+                </p>
+              </div>
+              <button
+                onClick={() => setShowClearDataModal(true)}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-600 hover:bg-rose-500 text-white transition-colors shadow-xs"
+              >
+                Wipe Demo
+              </button>
+            </div>
+
+            {/* Export Full Database */}
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Export Full Database</p>
@@ -299,6 +350,7 @@ export const ReportsView: React.FC = () => {
               </button>
             </div>
 
+            {/* Restore from File */}
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Restore from File</p>
@@ -316,6 +368,7 @@ export const ReportsView: React.FC = () => {
               </label>
             </div>
 
+            {/* Reset Demo Data */}
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Reset Demo Data</p>
@@ -323,7 +376,7 @@ export const ReportsView: React.FC = () => {
               </div>
               <button
                 onClick={resetDemoData}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 transition-colors"
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
               >
                 Reset Demo
               </button>
@@ -332,10 +385,23 @@ export const ReportsView: React.FC = () => {
 
           <div className="pt-2 text-[11px] text-slate-500 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>All financial telemetry is stored private & local to this browser session.</span>
+            <span>All telemetry is stored private & local to this browser session.</span>
           </div>
         </div>
       </div>
+
+      {/* Clear Data Modal */}
+      <ClearDataModal
+        isOpen={showClearDataModal}
+        onClose={() => setShowClearDataModal(false)}
+      />
+
+      {/* Database Setup Guide Modal */}
+      <DatabaseSetupModal
+        isOpen={showDatabaseModal}
+        onClose={() => setShowDatabaseModal(false)}
+        onOpenClearData={() => setShowClearDataModal(true)}
+      />
     </div>
   );
 };

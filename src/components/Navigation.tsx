@@ -11,19 +11,22 @@ import {
   BarChart3,
   Plus,
   Wallet,
-  Globe
+  Globe,
+  Database
 } from 'lucide-react';
 
 interface NavigationProps {
   currentTab: string;
   onSelectTab: (tab: string) => void;
   onOpenQuickTransaction: () => void;
+  onOpenDatabaseModal?: () => void;
 }
 
 export const Sidebar: React.FC<NavigationProps> = ({
   currentTab,
   onSelectTab,
   onOpenQuickTransaction,
+  onOpenDatabaseModal,
 }) => {
   const {
     accounts,
@@ -140,6 +143,23 @@ export const Sidebar: React.FC<NavigationProps> = ({
           </div>
           <ThemeSwitcher variant="segmented" />
         </div>
+
+        {/* Database & Local Machine Setup Guide trigger */}
+        {onOpenDatabaseModal && (
+          <button
+            type="button"
+            onClick={onOpenDatabaseModal}
+            className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50/60 dark:hover:bg-emerald-500/10 border border-slate-200/80 dark:border-slate-800/80 transition-all group"
+          >
+            <span className="flex items-center gap-2">
+              <Database className="w-3.5 h-3.5 text-emerald-500 group-hover:scale-110 transition-transform" />
+              <span>Database Guide</span>
+            </span>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+              Postgres
+            </span>
+          </button>
+        )}
       </div>
     </aside>
   );
