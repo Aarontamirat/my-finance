@@ -308,7 +308,13 @@ export default function App() {
   if (user === undefined) {
     return <div className="min-h-screen bg-slate-950 text-slate-300 grid place-items-center text-sm">Loading secure workspace…</div>;
   }
-  if (!user) return <AuthScreen onAuthenticated={setUser} />;
+  if (!user) {
+    return (
+      <FinanceProvider>
+        <AuthScreen onAuthenticated={setUser} />
+      </FinanceProvider>
+    );
+  }
   if (user.role === 'PLATFORM_ADMIN') return <AdminConsole user={user} onLogout={logout} />;
   return (
     <FinanceProvider>
