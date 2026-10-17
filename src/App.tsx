@@ -10,6 +10,10 @@ import { SavingsGoalsView } from './components/SavingsGoalsView';
 import { RecurringView } from './components/RecurringView';
 import { ReportsView } from './components/ReportsView';
 import { CategoriesView } from './components/CategoriesView';
+import { InsightsView } from './components/InsightsView';
+import { AdminConsole } from './components/AdminConsole';
+import { AuthScreen, AuthUser } from './components/AuthScreen';
+import { NotificationSettingsView } from './components/NotificationSettingsView';
 
 // Modals
 import { TransactionModal } from './components/TransactionModal';
@@ -26,7 +30,7 @@ import { CategoryModal } from './components/CategoryModal';
 // Types
 import { Transaction, Account, Budget, SavingsGoal, RecurringTransaction, Category } from './types/finance';
 
-function FinanceApp() {
+function FinanceApp({ user, onLogout }: { user: AuthUser; onLogout: () => void }) {
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
 
   // Modals state
@@ -142,6 +146,8 @@ function FinanceApp() {
         }}
         onOpenQuickTransaction={() => handleOpenTransactionModal()}
         onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
+        userName={user.name}
+        onLogout={onLogout}
       />
 
       {/* Mobile Top Header */}
@@ -149,6 +155,7 @@ function FinanceApp() {
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
         onOpenQuickTransaction={() => handleOpenTransactionModal()}
+        onLogout={onLogout}
       />
 
       {/* Main Content Viewport */}
@@ -201,6 +208,9 @@ function FinanceApp() {
         {currentTab === 'reports' && (
           <ReportsView onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)} />
         )}
+
+        {currentTab === 'insights' && <InsightsView />}
+        {currentTab === 'notifications' && <NotificationSettingsView />}
       </main>
 
       {/* Mobile Bottom Navigation */}
@@ -281,9 +291,28 @@ function FinanceApp() {
 }
 
 export default function App() {
+  const [user, setUser] = useState<AuthUser | null | undefined>(undefined);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((response) => response.json())
+      .then((data) => setUser(data.user || null))
+      .catch(() => setUser(null));
+  }, []);
+
+  const logout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    setUser(null);
+  };
+
+  if (user === undefined) {
+    return <div className="min-h-screen bg-slate-950 text-slate-300 grid place-items-center text-sm">Loading secure workspace…</div>;
+  }
+  if (!user) return <AuthScreen onAuthenticated={setUser} />;
+  if (user.role === 'PLATFORM_ADMIN') return <AdminConsole user={user} onLogout={logout} />;
   return (
     <FinanceProvider>
-      <FinanceApp />
+      <FinanceApp user={user} onLogout={logout} />
     </FinanceProvider>
   );
 }

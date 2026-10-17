@@ -14,6 +14,9 @@ import {
   Globe,
   Database,
   Tags,
+  Bot,
+  LogOut,
+  Bell,
 } from "lucide-react";
 
 interface NavigationProps {
@@ -21,6 +24,8 @@ interface NavigationProps {
   onSelectTab: (tab: string) => void;
   onOpenQuickTransaction: () => void;
   onOpenDatabaseModal?: () => void;
+  userName?: string;
+  onLogout?: () => void;
 }
 
 export const Sidebar: React.FC<NavigationProps> = ({
@@ -28,6 +33,8 @@ export const Sidebar: React.FC<NavigationProps> = ({
   onSelectTab,
   onOpenQuickTransaction,
   onOpenDatabaseModal,
+  userName,
+  onLogout,
 }) => {
   const { accounts, currency, setCurrency, formatCurrency } = useFinance();
 
@@ -40,12 +47,14 @@ export const Sidebar: React.FC<NavigationProps> = ({
     { id: "savings", label: "Savings Goals", icon: PiggyBank },
     { id: "recurring", label: "Recurring & Bills", icon: RefreshCw },
     { id: "reports", label: "Reports & Export", icon: BarChart3 },
+    { id: "insights", label: "AI Insights", icon: Bot },
+    { id: "notifications", label: "Notifications", icon: Bell },
   ];
 
   const netWorth = accounts.reduce((acc, a) => acc + a.balance, 0);
 
   return (
-    <aside className="hidden lg:flex w-64 flex-col justify-between border-r border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/60 backdrop-blur-xl h-screen sticky top-0 px-4 py-5 shrink-0 transition-colors duration-200">
+    <aside className="hidden lg:flex w-64 flex-col border-r border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/60 backdrop-blur-xl h-screen sticky top-0 px-4 py-5 shrink-0 overflow-y-auto overscroll-contain transition-colors duration-200">
       <div className="space-y-6">
         {/* Brand logo & title */}
         <div className="flex items-center gap-3 px-2">
@@ -115,7 +124,7 @@ export const Sidebar: React.FC<NavigationProps> = ({
       </div>
 
       {/* Footer controls: Currency and Theme Switcher */}
-      <div className="pt-4 border-t border-slate-200 dark:border-slate-800/80 space-y-3.5">
+      <div className="pt-4 mt-6 border-t border-slate-200 dark:border-slate-800/80 space-y-3.5">
         {/* Currency selector */}
         <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
           <div className="flex items-center gap-1.5">
@@ -164,6 +173,11 @@ export const Sidebar: React.FC<NavigationProps> = ({
             </span>
           </button>
         )}
+        {onLogout && (
+          <button type="button" onClick={onLogout} className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 border border-slate-200/80 dark:border-slate-800/80 transition-all">
+            <span className="flex items-center gap-2"><LogOut className="w-3.5 h-3.5" />{userName || "Sign out"}</span><span>Sign out</span>
+          </button>
+        )}
       </div>
     </aside>
   );
@@ -172,6 +186,7 @@ export const Sidebar: React.FC<NavigationProps> = ({
 export const MobileHeader: React.FC<NavigationProps> = ({
   onSelectTab,
   onOpenQuickTransaction,
+  onLogout,
 }) => {
   const { currency, setCurrency } = useFinance();
 
@@ -199,6 +214,7 @@ export const MobileHeader: React.FC<NavigationProps> = ({
           <option value="JPY">JPY</option>
         </select>
         <ThemeSwitcher variant="compact" />
+        {onLogout && <button onClick={onLogout} className="px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 flex items-center gap-1"><LogOut className="w-4 h-4" /> Sign out</button>}
         <button
           onClick={onOpenQuickTransaction}
           className="p-1.5 rounded-lg bg-emerald-500 text-white dark:bg-emerald-400 dark:text-slate-950 font-bold hover:opacity-90 transition-opacity"
@@ -224,6 +240,7 @@ export const MobileBottomNav: React.FC<NavigationProps> = ({
     { id: "savings", label: "Goals", icon: PiggyBank },
     { id: "recurring", label: "Bills", icon: RefreshCw },
     { id: "reports", label: "Reports", icon: BarChart3 },
+    { id: "insights", label: "Insights", icon: Bot },
   ];
 
   return (

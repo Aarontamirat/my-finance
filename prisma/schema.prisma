@@ -1,12 +1,17 @@
-// Prisma schema for Altrack Personal Finance & Expense Tracker
-// Configured for Neon Serverless PostgreSQL with connection pooling
+// Multi-tenant schema: platform administrators manage identities only; each
+// financial record belongs to exactly one standard user.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
+}
+
+enum UserRole {
+  PLATFORM_ADMIN
+  USER
 }
 
 enum AccountType {
@@ -33,72 +38,133 @@ enum Frequency {
   YEARLY
 }
 
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         UserRole  @default(USER)
+  isActive     Boolean   @default(true)
+  emailNotifications Boolean @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sessions     Session[]
+  accounts     Account[]
+  categories   Category[]
+  transactions Transaction[]
+  budgets      Budget[]
+  savingsGoals SavingsGoal[]
+  recurring    RecurringTransaction[]
+  settings     AppSettings?
+  emailNotificationLog EmailNotification[]
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model EmailNotification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  dedupeKey String
+  sentAt    DateTime @default(now())
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, sentAt])
+}
+
 model Account {
-  id                   String                 @id @default(uuid())
-  name                 String
-  type                 AccountType
-  balance              Float                  @default(0.0)
-  currency             String                 @default("ETB")
-  color                String?                @default("#10B981")
-  isDefault            Boolean                @default(false)
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  transactions         Transaction[]          @relation("AccountTransactions")
-  receivedTransfers    Transaction[]          @relation("TransferToAccount")
+  id                    String                 @id @default(uuid())
+  // Nullable only to preserve pre-multitenancy records during the one-time legacy assignment.
+  userId                String?
+  user                  User?                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                  String
+  type                  AccountType
+  balance               Float                  @default(0.0)
+  currency              String                 @default("ETB")
+  color                 String?                @default("#10B981")
+  isDefault             Boolean                @default(false)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  transactions          Transaction[]          @relation("AccountTransactions")
+  receivedTransfers     Transaction[]          @relation("TransferToAccount")
   recurringTransactions RecurringTransaction[]
+
+  @@index([userId])
 }
 
 model Category {
-  id                   String                 @id @default(uuid())
-  name                 String
-  type                 CategoryType
-  icon                 String                 @default("tag")
-  color                String                 @default("#6366F1")
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  transactions         Transaction[]
-  budgets              Budget[]
+  id                    String                 @id @default(uuid())
+  userId                String?
+  user                  User?                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                  String
+  type                  CategoryType
+  icon                  String                 @default("tag")
+  color                 String                 @default("#6366F1")
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  transactions          Transaction[]
+  budgets               Budget[]
   recurringTransactions RecurringTransaction[]
+
+  @@index([userId])
 }
 
 model Transaction {
-  id            String          @id @default(uuid())
-  amount        Float
-  type          TransactionType
-  date          DateTime
-  description   String
-  categoryId    String?
-  category      Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  accountId     String
-  account       Account         @relation("AccountTransactions", fields: [accountId], references: [id], onDelete: Cascade)
-  toAccountId   String?
-  toAccount     Account?        @relation("TransferToAccount", fields: [toAccountId], references: [id], onDelete: SetNull)
-  isRecurring   Boolean         @default(false)
-  notes         String?
-  tags          String[]        @default([])
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id          String          @id @default(uuid())
+  userId      String?
+  user        User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Float
+  type        TransactionType
+  date        DateTime
+  description String
+  categoryId  String?
+  category    Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  accountId   String
+  account     Account         @relation("AccountTransactions", fields: [accountId], references: [id], onDelete: Cascade)
+  toAccountId String?
+  toAccount   Account?        @relation("TransferToAccount", fields: [toAccountId], references: [id], onDelete: SetNull)
+  isRecurring Boolean         @default(false)
+  notes       String?
+  tags        String[]        @default([])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
-  @@index([date])
+  @@index([userId, date])
   @@index([accountId])
   @@index([categoryId])
 }
 
 model Budget {
   id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   categoryId  String
   category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   amountLimit Float
-  month       Int      // 1-12
-  year        Int      // e.g. 2026
+  month       Int
+  year        Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@unique([categoryId, month, year])
+  @@unique([userId, categoryId, month, year])
+  @@index([userId])
 }
 
 model SavingsGoal {
   id            String   @id @default(uuid())
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   name          String
   targetAmount  Float
   currentAmount Float    @default(0.0)
@@ -107,10 +173,14 @@ model SavingsGoal {
   category      String?  @default("General")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model RecurringTransaction {
   id          String    @id @default(uuid())
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
   amount      Float
   type        TransactionType
   frequency   Frequency
@@ -123,10 +193,14 @@ model RecurringTransaction {
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
 }
 
 model AppSettings {
-  id        String   @id @default("default")
+  id        String   @id @default(uuid())
+  userId    String?  @unique
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   currency  String   @default("USD")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
