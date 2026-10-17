@@ -597,7 +597,7 @@ app.post("/api/database/import", async (req, res) => {
             name: account.name,
             type: account.type,
             balance: numberOr(account.balance),
-            currency: account.currency || "USD",
+            currency: account.currency || "ETB",
             color: account.color || "#10B981",
             isDefault: Boolean(account.isDefault),
           })),

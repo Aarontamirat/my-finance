@@ -38,7 +38,7 @@ model Account {
   name                 String
   type                 AccountType
   balance              Float                  @default(0.0)
-  currency             String                 @default("USD")
+  currency             String                 @default("ETB")
   color                String?                @default("#10B981")
   isDefault            Boolean                @default(false)
   createdAt            DateTime               @default(now())
