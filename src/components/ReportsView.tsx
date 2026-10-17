@@ -113,15 +113,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onOpenDatabaseModal })
       .sort((a, b) => b.amount - a.amount);
   }, [transactions, categories]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const content = event.target?.result as string;
       if (content) {
-        importBackupJSON(content);
+        await importBackupJSON(content);
       }
     };
     reader.readAsText(file);
@@ -294,7 +294,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onOpenDatabaseModal })
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Manage your local ledger, wipe mock data, or connect PostgreSQL on your machine.
+              Review, export, restore, and manage the records in the connected PostgreSQL database.
             </p>
           </div>
 
@@ -318,21 +318,21 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onOpenDatabaseModal })
               </button>
             </div>
 
-            {/* Wipe Demo & Start Fresh with Real Data */}
+            {/* Clear persisted records */}
             <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-amber-900 dark:text-amber-200">
                   Start Fresh with Real Data
                 </p>
                 <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80">
-                  Wipe mock accounts and sample logs to record your own real finances
+                  Delete selected records from the connected database
                 </p>
               </div>
               <button
                 onClick={() => setShowClearDataModal(true)}
                 className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-600 hover:bg-rose-500 text-white transition-colors shadow-xs"
               >
-                Wipe Demo
+                Clear Database
               </button>
             </div>
 
@@ -385,7 +385,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onOpenDatabaseModal })
 
           <div className="pt-2 text-[11px] text-slate-500 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>All telemetry is stored private & local to this browser session.</span>
+            <span>Financial records are stored in the connected PostgreSQL database.</span>
           </div>
         </div>
       </div>

@@ -8,7 +8,6 @@ import {
   SavingsGoal,
   RecurringTransaction,
 } from '../types/finance';
-import { INITIAL_CATEGORIES } from '../data/initialData';
 
 export interface ToastMessage {
   id: string;
@@ -84,18 +83,17 @@ interface FinanceContextType {
   formatCurrency: (amount: number, customCurrency?: string) => string;
   exportToCSV: (filteredTransactions?: Transaction[]) => void;
   exportBackupJSON: () => void;
-  importBackupJSON: (jsonData: string) => boolean;
+  importBackupJSON: (jsonData: string) => Promise<boolean>;
   clearAllData: (keepCategories?: boolean) => Promise<void>;
 }
 
 const THEME_KEY = 'auraledger_theme_v1';
-const CURRENCY_KEY = 'auraledger_currency_v1';
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
@@ -108,28 +106,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     databaseUrlConfigured: false,
   });
 
-  const [currency, setCurrencyState] = useState<string>(() => {
-    return localStorage.getItem(CURRENCY_KEY) || 'USD';
-  });
+  const [currency, setCurrencyState] = useState<string>('USD');
 
   const [theme, setThemeState] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem(THEME_KEY) as 'dark' | 'light') || 'dark';
   });
 
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  // Purge any legacy demo session keys from localStorage
-  useEffect(() => {
-    try {
-      localStorage.removeItem('auraledger_state_v1_accounts');
-      localStorage.removeItem('auraledger_state_v1_transactions');
-      localStorage.removeItem('auraledger_state_v1_budgets');
-      localStorage.removeItem('auraledger_state_v1_goals');
-      localStorage.removeItem('auraledger_state_v1_recurring');
-    } catch {
-      // ignore
-    }
-  }, []);
 
   // Theme synchronization
   useEffect(() => {
@@ -145,13 +128,19 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [theme]);
 
-  // Currency synchronization
-  useEffect(() => {
-    localStorage.setItem(CURRENCY_KEY, currency);
-  }, [currency]);
-
-  const setCurrency = (newCurrency: string) => {
-    setCurrencyState(newCurrency);
+  const setCurrency = async (newCurrency: string) => {
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currency: newCurrency }),
+      });
+      if (!res.ok) throw new Error('Failed to save currency setting');
+      const settings = await res.json();
+      setCurrencyState(settings.currency);
+    } catch (err: any) {
+      showToast('error', 'Currency Update Failed', err.message);
+    }
   };
 
   const setTheme = (newTheme: 'dark' | 'light') => {
@@ -178,8 +167,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Fetch real data from database API endpoints
   const refreshData = useCallback(async () => {
     try {
-      const [healthRes, accRes, catRes, txRes, bgtRes, goalRes, recRes] = await Promise.allSettled([
+      const [healthRes, settingsRes, accRes, catRes, txRes, bgtRes, goalRes, recRes] = await Promise.allSettled([
         fetch('/api/health').then((r) => r.json()),
+        fetch('/api/settings').then((r) => r.json()),
         fetch('/api/accounts').then((r) => r.json()),
         fetch('/api/categories').then((r) => r.json()),
         fetch('/api/transactions').then((r) => r.json()),
@@ -192,11 +182,15 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setDbStatus(healthRes.value);
       }
 
+      if (settingsRes.status === 'fulfilled' && typeof settingsRes.value?.currency === 'string') {
+        setCurrencyState(settingsRes.value.currency);
+      }
+
       if (accRes.status === 'fulfilled' && Array.isArray(accRes.value)) {
         setAccounts(accRes.value);
       }
 
-      if (catRes.status === 'fulfilled' && Array.isArray(catRes.value) && catRes.value.length > 0) {
+      if (catRes.status === 'fulfilled' && Array.isArray(catRes.value)) {
         setCategories(catRes.value);
       }
 
@@ -353,8 +347,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
     try {
-      setTransactions((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
-      showToast('success', 'Transaction Updated');
+      const res = await fetch(`/api/transactions/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) throw new Error('Failed to update transaction');
+      const updated = await res.json();
+      setTransactions((prev) => prev.map((t) => (t.id === id ? updated : t)));
+      await refreshData();
+      showToast('success', 'Transaction Updated', 'Saved to database');
     } catch (err: any) {
       showToast('error', 'Update Failed', err.message);
     }
@@ -557,8 +559,19 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updateRecurring = async (id: string, updates: Partial<RecurringTransaction>) => {
-    setRecurring((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)));
-    showToast('success', 'Recurring Updated');
+    try {
+      const res = await fetch(`/api/recurring/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) throw new Error('Failed to update recurring transaction');
+      const updated = await res.json();
+      setRecurring((prev) => prev.map((r) => (r.id === id ? updated : r)));
+      showToast('success', 'Recurring Updated', 'Saved to database');
+    } catch (err: any) {
+      showToast('error', 'Update Failed', err.message);
+    }
   };
 
   const deleteRecurring = async (id: string) => {
@@ -617,11 +630,30 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updateCategory = async (id: string, catData: Partial<Category>) => {
-    setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...catData } : c)));
+    try {
+      const res = await fetch(`/api/categories/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(catData),
+      });
+      if (!res.ok) throw new Error('Failed to update category');
+      const updated = await res.json();
+      setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    } catch (err: any) {
+      showToast('error', 'Update Failed', err.message);
+    }
   };
 
   const deleteCategory = async (id: string) => {
-    setCategories((prev) => prev.filter((c) => c.id !== id));
+    try {
+      const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete category');
+      setCategories((prev) => prev.filter((c) => c.id !== id));
+      await refreshData();
+      showToast('info', 'Category Deleted');
+    } catch (err: any) {
+      showToast('error', 'Delete Failed', err.message);
+    }
   };
 
   // Helpers
@@ -697,21 +729,21 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     showToast('success', 'Backup Exported', 'Full database snapshot downloaded');
   };
 
-  const importBackupJSON = (jsonString: string): boolean => {
+  const importBackupJSON = async (jsonString: string): Promise<boolean> => {
     try {
       const data = JSON.parse(jsonString);
-      if (!data.accounts || !data.transactions) {
+      if (!data.accounts || !data.categories || !data.transactions || !data.budgets || !data.savingsGoals || !data.recurring) {
         throw new Error('Invalid structure');
       }
-      setAccounts(data.accounts);
-      if (data.categories) setCategories(data.categories);
-      setTransactions(data.transactions);
-      if (data.budgets) setBudgets(data.budgets);
-      if (data.savingsGoals) setSavingsGoals(data.savingsGoals);
-      if (data.recurring) setRecurring(data.recurring);
-      if (data.currency) setCurrencyState(data.currency);
+      const res = await fetch('/api/database/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Database import failed');
+      await refreshData();
 
-      showToast('success', 'Backup Restored', 'Data imported successfully');
+      showToast('success', 'Backup Restored', 'Data imported into the database');
       return true;
     } catch {
       showToast('error', 'Restore Failed', 'JSON file is invalid or corrupted');
@@ -721,13 +753,15 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const clearAllData = async (keepCategories = true) => {
     try {
-      await fetch('/api/database/clear-all', {
+      const res = await fetch('/api/database/clear-all', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ keepCategories }),
       });
-    } catch {
-      // ignore
+      if (!res.ok) throw new Error('Failed to clear database');
+    } catch (err: any) {
+      showToast('error', 'Database Clear Failed', err.message);
+      return;
     }
 
     setAccounts([]);

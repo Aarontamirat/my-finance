@@ -12,7 +12,8 @@ import {
   Plus,
   Wallet,
   Globe,
-  Database
+  Database,
+  Tags,
 } from 'lucide-react';
 
 interface NavigationProps {
@@ -39,6 +40,7 @@ export const Sidebar: React.FC<NavigationProps> = ({
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'accounts', label: 'Accounts', icon: CreditCard },
     { id: 'transactions', label: 'Transactions', icon: Receipt },
+    { id: 'categories', label: 'Categories', icon: Tags },
     { id: 'budgets', label: 'Smart Budgets', icon: Target },
     { id: 'savings', label: 'Savings Goals', icon: PiggyBank },
     { id: 'recurring', label: 'Recurring & Bills', icon: RefreshCw },
@@ -127,6 +129,7 @@ export const Sidebar: React.FC<NavigationProps> = ({
             className="px-2.5 py-1 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-800 dark:text-slate-200 font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500"
           >
             <option value="USD">USD ($)</option>
+            <option value="ETB">ETB (Br)</option>
             <option value="EUR">EUR (€)</option>
             <option value="GBP">GBP (£)</option>
             <option value="JPY">JPY (¥)</option>
@@ -187,6 +190,7 @@ export const MobileHeader: React.FC<NavigationProps> = ({
           className="px-2 py-1 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-800 dark:text-slate-200 font-mono"
         >
           <option value="USD">USD</option>
+          <option value="ETB">ETB</option>
           <option value="EUR">EUR</option>
           <option value="GBP">GBP</option>
           <option value="JPY">JPY</option>
@@ -212,6 +216,7 @@ export const MobileBottomNav: React.FC<NavigationProps> = ({
     { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
     { id: 'accounts', label: 'Accounts', icon: CreditCard },
     { id: 'transactions', label: 'Ledger', icon: Receipt },
+    { id: 'categories', label: 'Categories', icon: Tags },
     { id: 'budgets', label: 'Budgets', icon: Target },
     { id: 'savings', label: 'Goals', icon: PiggyBank },
     { id: 'reports', label: 'Reports', icon: BarChart3 },

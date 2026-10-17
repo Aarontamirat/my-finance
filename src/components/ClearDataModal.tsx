@@ -62,10 +62,10 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({ isOpen, onClose 
               />
               <div>
                 <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  Keep Standard Categories (Recommended)
+                  Keep Existing Categories (Recommended)
                 </span>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Retains standard tags (Groceries, Housing, Salary, Subscriptions) so you can immediately begin adding your real accounts and transactions.
+                  Retains the categories already saved in your database while clearing accounts and activity.
                 </p>
               </div>
             </label>
@@ -104,7 +104,7 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({ isOpen, onClose 
             className="px-4 py-2 text-xs font-semibold rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/20 transition-all flex items-center gap-1.5"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Wipe Demo & Start Fresh
+            Clear Database & Start Fresh
           </button>
         </div>
       </div>

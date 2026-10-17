@@ -9,6 +9,7 @@ import { BudgetsView } from './components/BudgetsView';
 import { SavingsGoalsView } from './components/SavingsGoalsView';
 import { RecurringView } from './components/RecurringView';
 import { ReportsView } from './components/ReportsView';
+import { CategoriesView } from './components/CategoriesView';
 
 // Modals
 import { TransactionModal } from './components/TransactionModal';
@@ -20,9 +21,10 @@ import { GoalActionModal } from './components/GoalActionModal';
 import { RecurringModal } from './components/RecurringModal';
 import { DatabaseSetupModal } from './components/DatabaseSetupModal';
 import { ClearDataModal } from './components/ClearDataModal';
+import { CategoryModal } from './components/CategoryModal';
 
 // Types
-import { Transaction, Account, Budget, SavingsGoal, RecurringTransaction } from './types/finance';
+import { Transaction, Account, Budget, SavingsGoal, RecurringTransaction, Category } from './types/finance';
 
 function FinanceApp() {
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
@@ -58,6 +60,8 @@ function FinanceApp() {
 
   const [isDatabaseModalOpen, setIsDatabaseModalOpen] = useState(false);
   const [isClearDataModalOpen, setIsClearDataModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
 
   // Drilldown filter for transactions
   const [transactionsFilterAccount, setTransactionsFilterAccount] = useState<string | null>(null);
@@ -115,6 +119,11 @@ function FinanceApp() {
   const handleOpenRecurringModal = (recurringItem?: RecurringTransaction) => {
     setSelectedRecurring(recurringItem || null);
     setIsRecurringModalOpen(true);
+  };
+
+  const handleOpenCategoryModal = (category?: Category) => {
+    setSelectedCategory(category || null);
+    setIsCategoryModalOpen(true);
   };
 
   const handleFilterTransactionsByAccount = (accountId: string) => {
@@ -185,6 +194,10 @@ function FinanceApp() {
           <RecurringView onOpenRecurringModal={handleOpenRecurringModal} />
         )}
 
+        {currentTab === 'categories' && (
+          <CategoriesView onOpenCategoryModal={handleOpenCategoryModal} />
+        )}
+
         {currentTab === 'reports' && (
           <ReportsView onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)} />
         )}
@@ -242,6 +255,12 @@ function FinanceApp() {
         isOpen={isRecurringModalOpen}
         onClose={() => setIsRecurringModalOpen(false)}
         initialRecurring={selectedRecurring}
+      />
+
+      <CategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        initialCategory={selectedCategory}
       />
 
       <DatabaseSetupModal
