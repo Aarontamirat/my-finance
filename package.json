@@ -6,11 +6,10 @@
   "scripts": {
     "dev": "tsx server.ts",
     "start": "node server.ts",
-    "build": "vite build",
+    "build": "prisma generate && vite build",
+    "postinstall": "prisma generate",
     "preview": "vite preview",
-    "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit",
-    "postinstall": "prisma generate"
+    "clean": "rm -rf dist server.js"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
