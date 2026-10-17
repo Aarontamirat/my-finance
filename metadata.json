@@ -1,5 +1,5 @@
 {
-  "name": "AuraLedger - Personal Finance & Expense Tracker",
+  "name": "Altrack - Personal Finance & Expense Tracker",
   "description": "A sleek, modern Personal Finance & Expense Tracker with multi-account management, cash flow analytics, smart budgets, recurring bills, and savings goal trackers.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

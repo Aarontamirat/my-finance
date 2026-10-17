@@ -710,7 +710,7 @@ async function startServer() {
     app.use(vite.middlewares);
   }
   app.listen(port, "0.0.0.0", () =>
-    console.log(`AuraLedger server running on http://0.0.0.0:${port}`),
+    console.log(`Altrack server running on http://0.0.0.0:${port}`),
   );
 }
 

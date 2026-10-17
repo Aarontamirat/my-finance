@@ -1,4 +1,4 @@
-// Prisma schema for AuraLedger Personal Finance & Expense Tracker
+// Prisma schema for Altrack Personal Finance & Expense Tracker
 // Configured for Neon Serverless PostgreSQL with connection pooling
 
 generator client {

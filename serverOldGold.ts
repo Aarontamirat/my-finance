@@ -34,12 +34,10 @@ const databaseRequired = async (
     next();
   } catch (error) {
     console.error("Database connection error:", error);
-    res
-      .status(503)
-      .json({
-        error:
-          "Database unavailable. Check DATABASE_URL and the database connection.",
-      });
+    res.status(503).json({
+      error:
+        "Database unavailable. Check DATABASE_URL and the database connection.",
+    });
   }
 };
 
@@ -97,14 +95,12 @@ app.get("/api/health", async (_req, res) => {
       databaseUrlConfigured: true,
     });
   } catch (error: any) {
-    res
-      .status(503)
-      .json({
-        connected: false,
-        engine: "PostgreSQL (Prisma)",
-        databaseUrlConfigured: Boolean(databaseUrl),
-        error: error.message,
-      });
+    res.status(503).json({
+      connected: false,
+      engine: "PostgreSQL (Prisma)",
+      databaseUrlConfigured: Boolean(databaseUrl),
+      error: error.message,
+    });
   }
 });
 
@@ -166,20 +162,18 @@ app.post("/api/accounts", async (req, res) => {
     } = req.body;
     if (!name)
       return res.status(400).json({ error: "Account name is required." });
-    res
-      .status(201)
-      .json(
-        await prisma.account.create({
-          data: {
-            name,
-            type,
-            balance: numberOr(balance),
-            currency,
-            color,
-            isDefault: Boolean(isDefault),
-          },
-        }),
-      );
+    res.status(201).json(
+      await prisma.account.create({
+        data: {
+          name,
+          type,
+          balance: numberOr(balance),
+          currency,
+          color,
+          isDefault: Boolean(isDefault),
+        },
+      }),
+    );
   } catch (error) {
     sendDatabaseError(res, error, "create account");
   }
@@ -431,20 +425,18 @@ app.post("/api/savings-goals", async (req, res) => {
       return res
         .status(400)
         .json({ error: "Goal name and target date are required." });
-    res
-      .status(201)
-      .json(
-        await prisma.savingsGoal.create({
-          data: {
-            name,
-            targetAmount: numberOr(targetAmount),
-            currentAmount: numberOr(currentAmount),
-            targetDate: new Date(targetDate),
-            color,
-            category,
-          },
-        }),
-      );
+    res.status(201).json(
+      await prisma.savingsGoal.create({
+        data: {
+          name,
+          targetAmount: numberOr(targetAmount),
+          currentAmount: numberOr(currentAmount),
+          targetDate: new Date(targetDate),
+          color,
+          category,
+        },
+      }),
+    );
   } catch (error) {
     sendDatabaseError(res, error, "create savings goal");
   }
@@ -505,27 +497,23 @@ app.post("/api/recurring", async (req, res) => {
       isActive = true,
     } = req.body;
     if (!accountId || !description || !nextDueDate)
-      return res
-        .status(400)
-        .json({
-          error: "Account, description, and next due date are required.",
-        });
-    res
-      .status(201)
-      .json(
-        await prisma.recurringTransaction.create({
-          data: {
-            amount: Math.abs(numberOr(amount)),
-            type,
-            frequency,
-            nextDueDate: new Date(nextDueDate),
-            description,
-            categoryId: categoryId || null,
-            accountId,
-            isActive: Boolean(isActive),
-          },
-        }),
-      );
+      return res.status(400).json({
+        error: "Account, description, and next due date are required.",
+      });
+    res.status(201).json(
+      await prisma.recurringTransaction.create({
+        data: {
+          amount: Math.abs(numberOr(amount)),
+          type,
+          frequency,
+          nextDueDate: new Date(nextDueDate),
+          description,
+          categoryId: categoryId || null,
+          accountId,
+          isActive: Boolean(isActive),
+        },
+      }),
+    );
   } catch (error) {
     sendDatabaseError(res, error, "create recurring transaction");
   }
@@ -579,11 +567,9 @@ app.post("/api/database/import", async (req, res) => {
       !Array.isArray(savingsGoals) ||
       !Array.isArray(recurring)
     ) {
-      return res
-        .status(400)
-        .json({
-          error: "The backup does not contain a complete finance dataset.",
-        });
+      return res.status(400).json({
+        error: "The backup does not contain a complete finance dataset.",
+      });
     }
 
     await prisma.$transaction(async (tx) => {
@@ -708,7 +694,7 @@ async function startServer() {
     app.use(vite.middlewares);
   }
   app.listen(port, "0.0.0.0", () =>
-    console.log(`AuraLedger server running on http://0.0.0.0:${port}`),
+    console.log(`Altrack server running on http://0.0.0.0:${port}`),
   );
 }
 
@@ -726,6 +712,6 @@ export default app;
 // Only call app.listen when running locally (not on Vercel)
 if (!process.env.VERCEL) {
   app.listen(port, "0.0.0.0", () =>
-    console.log(`AuraLedger server running on http://0.0.0.0:${port}`),
+    console.log(`Altrack server running on http://0.0.0.0:${port}`),
   );
 }

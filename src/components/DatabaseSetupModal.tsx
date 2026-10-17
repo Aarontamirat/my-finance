@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Database,
   Server,
@@ -11,9 +11,9 @@ import {
   Terminal,
   ShieldCheck,
   Zap,
-  ArrowRight
-} from 'lucide-react';
-import { useFinance } from '../context/FinanceContext';
+  ArrowRight,
+} from "lucide-react";
+import { useFinance } from "../context/FinanceContext";
 
 interface DatabaseSetupModalProps {
   isOpen: boolean;
@@ -28,14 +28,16 @@ export const DatabaseSetupModal: React.FC<DatabaseSetupModalProps> = ({
 }) => {
   const { showToast, dbStatus } = useFinance();
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<'status' | 'local' | 'neon'>('status');
+  const [activeTab, setActiveTab] = useState<"status" | "local" | "neon">(
+    "status",
+  );
 
   if (!isOpen) return null;
 
   const copyToClipboard = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
     setCopiedIndex(index);
-    showToast('info', 'Copied to clipboard');
+    showToast("info", "Copied to clipboard");
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
@@ -47,24 +49,24 @@ DIRECT_URL="postgresql://neondb_owner:YOUR_PASSWORD@ep-sample-123456.us-east-2.a
 
   const commandsList = [
     {
-      title: '1. Install Dependencies & Prisma CLI',
-      cmd: 'npm install\nnpm install -D prisma @prisma/client',
+      title: "1. Install Dependencies & Prisma CLI",
+      cmd: "npm install\nnpm install -D prisma @prisma/client",
     },
     {
-      title: '2. Create your .env file with your Neon or Local Postgres URL',
-      cmd: 'cp .env.example .env\n# Edit .env with your actual DATABASE_URL & DIRECT_URL',
+      title: "2. Create your .env file with your Neon or Local Postgres URL",
+      cmd: "cp .env.example .env\n# Edit .env with your actual DATABASE_URL & DIRECT_URL",
     },
     {
-      title: '3. Push the Prisma Schema to your PostgreSQL Database',
-      cmd: 'npx prisma db push',
+      title: "3. Push the Prisma Schema to your PostgreSQL Database",
+      cmd: "npx prisma db push",
     },
     {
-      title: '4. Launch Prisma Studio (Visual GUI to inspect & edit DB)',
-      cmd: 'npx prisma studio',
+      title: "4. Launch Prisma Studio (Visual GUI to inspect & edit DB)",
+      cmd: "npx prisma studio",
     },
     {
-      title: '5. Run the Local Development Server',
-      cmd: 'npm run dev',
+      title: "5. Run the Local Development Server",
+      cmd: "npm run dev",
     },
   ];
 
@@ -82,7 +84,7 @@ DIRECT_URL="postgresql://neondb_owner:YOUR_PASSWORD@ep-sample-123456.us-east-2.a
                 Database & Machine Setup Guide
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                How AuraLedger connects to databases and runs on your machine
+                How Altrack connects to databases and runs on your machine
               </p>
             </div>
           </div>
@@ -97,31 +99,31 @@ DIRECT_URL="postgresql://neondb_owner:YOUR_PASSWORD@ep-sample-123456.us-east-2.a
         {/* Tab selection */}
         <div className="flex items-center gap-2 my-4 p-1 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800/80 shrink-0">
           <button
-            onClick={() => setActiveTab('status')}
+            onClick={() => setActiveTab("status")}
             className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
-              activeTab === 'status'
-                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              activeTab === "status"
+                ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
             }`}
           >
             Connection Status
           </button>
           <button
-            onClick={() => setActiveTab('local')}
+            onClick={() => setActiveTab("local")}
             className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
-              activeTab === 'local'
-                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              activeTab === "local"
+                ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
             }`}
           >
             Run on Your Machine
           </button>
           <button
-            onClick={() => setActiveTab('neon')}
+            onClick={() => setActiveTab("neon")}
             className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
-              activeTab === 'neon'
-                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              activeTab === "neon"
+                ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
             }`}
           >
             Neon Postgres Setup
@@ -130,7 +132,7 @@ DIRECT_URL="postgresql://neondb_owner:YOUR_PASSWORD@ep-sample-123456.us-east-2.a
 
         {/* Tab Content */}
         <div className="overflow-y-auto space-y-4 pr-1 text-slate-700 dark:text-slate-300">
-          {activeTab === 'status' && (
+          {activeTab === "status" && (
             <div className="space-y-4">
               <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs">
                 <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold mb-1">
@@ -139,8 +141,8 @@ DIRECT_URL="postgresql://neondb_owner:YOUR_PASSWORD@ep-sample-123456.us-east-2.a
                 </div>
                 <p className="text-slate-600 dark:text-slate-300">
                   {dbStatus.connected
-                    ? 'Connected directly to your PostgreSQL database. All mutations are stored permanently in database tables.'
-                    : 'The full-stack Express and Prisma ORM backend is active. Add your Neon DATABASE_URL in .env to connect to your live database instance.'}
+                    ? "Connected directly to your PostgreSQL database. All mutations are stored permanently in database tables."
+                    : "The full-stack Express and Prisma ORM backend is active. Add your Neon DATABASE_URL in .env to connect to your live database instance."}
                 </p>
               </div>
 
@@ -151,7 +153,8 @@ DIRECT_URL="postgresql://neondb_owner:YOUR_PASSWORD@ep-sample-123456.us-east-2.a
                     Reset or Clear Database
                   </div>
                   <p className="text-slate-500 dark:text-slate-400 mb-3">
-                    Wipe all records across database tables to reset to a completely blank ledger.
+                    Wipe all records across database tables to reset to a
+                    completely blank ledger.
                   </p>
                   <button
                     onClick={() => {
@@ -170,7 +173,12 @@ DIRECT_URL="postgresql://neondb_owner:YOUR_PASSWORD@ep-sample-123456.us-east-2.a
                     Prisma Schema & Neon Pooler
                   </div>
                   <p className="text-slate-500 dark:text-slate-400">
-                    <code className="text-emerald-600 dark:text-emerald-400 font-mono">prisma/schema.prisma</code> models: Account, Category, Transaction, Budget, SavingsGoal, and RecurringTransaction with connection pooling and direct migration URLs.
+                    <code className="text-emerald-600 dark:text-emerald-400 font-mono">
+                      prisma/schema.prisma
+                    </code>{" "}
+                    models: Account, Category, Transaction, Budget, SavingsGoal,
+                    and RecurringTransaction with connection pooling and direct
+                    migration URLs.
                   </p>
                 </div>
               </div>
@@ -180,16 +188,22 @@ DIRECT_URL="postgresql://neondb_owner:YOUR_PASSWORD@ep-sample-123456.us-east-2.a
                   How your Neon Database connects:
                 </span>
                 <p className="text-slate-500 dark:text-slate-400">
-                  When you download this repo and run it on your machine, your secret <code className="font-mono">DATABASE_URL</code> and <code className="font-mono">DIRECT_URL</code> in <code className="font-mono">.env</code> route all queries through Prisma Client directly to your Neon PostgreSQL cluster.
+                  When you download this repo and run it on your machine, your
+                  secret <code className="font-mono">DATABASE_URL</code> and{" "}
+                  <code className="font-mono">DIRECT_URL</code> in{" "}
+                  <code className="font-mono">.env</code> route all queries
+                  through Prisma Client directly to your Neon PostgreSQL
+                  cluster.
                 </p>
               </div>
             </div>
           )}
 
-          {activeTab === 'local' && (
+          {activeTab === "local" && (
             <div className="space-y-4">
               <div className="text-xs text-slate-500 dark:text-slate-400">
-                To run AuraLedger on your local computer connected to a real PostgreSQL database:
+                To run Altrack on your local computer connected to a real
+                PostgreSQL database:
               </div>
 
               {commandsList.map((item, idx) => (
@@ -221,14 +235,15 @@ DIRECT_URL="postgresql://neondb_owner:YOUR_PASSWORD@ep-sample-123456.us-east-2.a
             </div>
           )}
 
-          {activeTab === 'neon' && (
+          {activeTab === "neon" && (
             <div className="space-y-4 text-xs">
               <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                 <h4 className="font-bold text-emerald-700 dark:text-emerald-400 mb-1">
                   Connecting to Neon (Serverless Postgres)
                 </h4>
                 <p className="text-slate-600 dark:text-slate-300">
-                  Neon provides a free serverless PostgreSQL database with connection pooling that works seamlessly with Prisma.
+                  Neon provides a free serverless PostgreSQL database with
+                  connection pooling that works seamlessly with Prisma.
                 </p>
               </div>
 
@@ -237,7 +252,18 @@ DIRECT_URL="postgresql://neondb_owner:YOUR_PASSWORD@ep-sample-123456.us-east-2.a
                   1. Get connection strings from Neon Console
                 </p>
                 <p className="text-slate-500 dark:text-slate-400">
-                  Go to <a href="https://console.neon.tech" target="_blank" rel="noreferrer" className="text-emerald-600 dark:text-emerald-400 underline inline-flex items-center gap-0.5">console.neon.tech <ExternalLink className="w-3 h-3" /></a>, create a free project, and copy your pooled connection string and unpooled connection string into your <code className="font-mono">.env</code>:
+                  Go to{" "}
+                  <a
+                    href="https://console.neon.tech"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-emerald-600 dark:text-emerald-400 underline inline-flex items-center gap-0.5"
+                  >
+                    console.neon.tech <ExternalLink className="w-3 h-3" />
+                  </a>
+                  , create a free project, and copy your pooled connection
+                  string and unpooled connection string into your{" "}
+                  <code className="font-mono">.env</code>:
                 </p>
                 <div className="relative">
                   <pre className="p-3 rounded-xl bg-slate-900 text-slate-200 font-mono text-[11px] overflow-x-auto">
@@ -264,7 +290,31 @@ DIRECT_URL="postgresql://neondb_owner:YOUR_PASSWORD@ep-sample-123456.us-east-2.a
                   npx prisma db push
                 </pre>
                 <p className="text-slate-500 dark:text-slate-400 text-[11px]">
-                  This creates all tables: <code className="font-mono text-slate-700 dark:text-slate-300">Account</code>, <code className="font-mono text-slate-700 dark:text-slate-300">Transaction</code>, <code className="font-mono text-slate-700 dark:text-slate-300">Category</code>, <code className="font-mono text-slate-700 dark:text-slate-300">Budget</code>, <code className="font-mono text-slate-700 dark:text-slate-300">SavingsGoal</code>, and <code className="font-mono text-slate-700 dark:text-slate-300">RecurringTransaction</code>.
+                  This creates all tables:{" "}
+                  <code className="font-mono text-slate-700 dark:text-slate-300">
+                    Account
+                  </code>
+                  ,{" "}
+                  <code className="font-mono text-slate-700 dark:text-slate-300">
+                    Transaction
+                  </code>
+                  ,{" "}
+                  <code className="font-mono text-slate-700 dark:text-slate-300">
+                    Category
+                  </code>
+                  ,{" "}
+                  <code className="font-mono text-slate-700 dark:text-slate-300">
+                    Budget
+                  </code>
+                  ,{" "}
+                  <code className="font-mono text-slate-700 dark:text-slate-300">
+                    SavingsGoal
+                  </code>
+                  , and{" "}
+                  <code className="font-mono text-slate-700 dark:text-slate-300">
+                    RecurringTransaction
+                  </code>
+                  .
                 </p>
               </div>
 
@@ -276,7 +326,8 @@ DIRECT_URL="postgresql://neondb_owner:YOUR_PASSWORD@ep-sample-123456.us-east-2.a
                   npx prisma studio
                 </pre>
                 <p className="text-slate-500 dark:text-slate-400 text-[11px]">
-                  Opens http://localhost:5555 where you can view, create, edit, and delete real rows in your PostgreSQL database.
+                  Opens http://localhost:5555 where you can view, create, edit,
+                  and delete real rows in your PostgreSQL database.
                 </p>
               </div>
             </div>

@@ -1,6 +1,6 @@
-import React from 'react';
-import { useFinance } from '../context/FinanceContext';
-import { ThemeSwitcher } from './ThemeSwitcher';
+import React from "react";
+import { useFinance } from "../context/FinanceContext";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 import {
   LayoutDashboard,
   CreditCard,
@@ -14,7 +14,7 @@ import {
   Globe,
   Database,
   Tags,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface NavigationProps {
   currentTab: string;
@@ -29,22 +29,17 @@ export const Sidebar: React.FC<NavigationProps> = ({
   onOpenQuickTransaction,
   onOpenDatabaseModal,
 }) => {
-  const {
-    accounts,
-    currency,
-    setCurrency,
-    formatCurrency,
-  } = useFinance();
+  const { accounts, currency, setCurrency, formatCurrency } = useFinance();
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'accounts', label: 'Accounts', icon: CreditCard },
-    { id: 'transactions', label: 'Transactions', icon: Receipt },
-    { id: 'categories', label: 'Categories', icon: Tags },
-    { id: 'budgets', label: 'Smart Budgets', icon: Target },
-    { id: 'savings', label: 'Savings Goals', icon: PiggyBank },
-    { id: 'recurring', label: 'Recurring & Bills', icon: RefreshCw },
-    { id: 'reports', label: 'Reports & Export', icon: BarChart3 },
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "accounts", label: "Accounts", icon: CreditCard },
+    { id: "transactions", label: "Transactions", icon: Receipt },
+    { id: "categories", label: "Categories", icon: Tags },
+    { id: "budgets", label: "Smart Budgets", icon: Target },
+    { id: "savings", label: "Savings Goals", icon: PiggyBank },
+    { id: "recurring", label: "Recurring & Bills", icon: RefreshCw },
+    { id: "reports", label: "Reports & Export", icon: BarChart3 },
   ];
 
   const netWorth = accounts.reduce((acc, a) => acc + a.balance, 0);
@@ -59,12 +54,14 @@ export const Sidebar: React.FC<NavigationProps> = ({
           </div>
           <div>
             <h2 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-              AuraLedger
+              Altrack
               <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                 PRO
               </span>
             </h2>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">Personal Wealth Suite</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+              Personal Wealth Suite
+            </p>
           </div>
         </div>
 
@@ -99,13 +96,15 @@ export const Sidebar: React.FC<NavigationProps> = ({
                 onClick={() => onSelectTab(item.id)}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                   isActive
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/20'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/60 border border-transparent'
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/20"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/60 border border-transparent"
                 }`}
               >
                 <Icon
                   className={`w-4 h-4 transition-transform ${
-                    isActive ? 'text-emerald-600 dark:text-emerald-400 scale-110' : 'text-slate-400'
+                    isActive
+                      ? "text-emerald-600 dark:text-emerald-400 scale-110"
+                      : "text-slate-400"
                   }`}
                 />
                 <span>{item.label}</span>
@@ -142,7 +141,9 @@ export const Sidebar: React.FC<NavigationProps> = ({
         <div className="space-y-1.5 px-0.5">
           <div className="flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400 px-1">
             <span>Theme Mode</span>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500">Auto-persisted</span>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500">
+              Auto-persisted
+            </span>
           </div>
           <ThemeSwitcher variant="segmented" />
         </div>
@@ -177,10 +178,12 @@ export const MobileHeader: React.FC<NavigationProps> = ({
   return (
     <header className="lg:hidden sticky top-0 z-40 bg-white/95 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between transition-colors duration-200">
       <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 font-black shadow-md shadow-emerald-500/20">
+        <div className="w-8 h-8 rounded-lg bg-linear-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 font-black shadow-md shadow-emerald-500/20">
           <Wallet className="w-4 h-4 text-slate-950" />
         </div>
-        <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">AuraLedger</h2>
+        <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+          Altrack
+        </h2>
       </div>
 
       <div className="flex items-center gap-2">
@@ -213,13 +216,14 @@ export const MobileBottomNav: React.FC<NavigationProps> = ({
   onOpenQuickTransaction,
 }) => {
   const items = [
-    { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
-    { id: 'accounts', label: 'Accounts', icon: CreditCard },
-    { id: 'transactions', label: 'Ledger', icon: Receipt },
-    { id: 'categories', label: 'Categories', icon: Tags },
-    { id: 'budgets', label: 'Budgets', icon: Target },
-    { id: 'savings', label: 'Goals', icon: PiggyBank },
-    { id: 'reports', label: 'Reports', icon: BarChart3 },
+    { id: "dashboard", label: "Home", icon: LayoutDashboard },
+    { id: "accounts", label: "Accounts", icon: CreditCard },
+    { id: "transactions", label: "Ledger", icon: Receipt },
+    { id: "categories", label: "Categories", icon: Tags },
+    { id: "budgets", label: "Budgets", icon: Target },
+    { id: "savings", label: "Goals", icon: PiggyBank },
+    { id: "recurring", label: "Bills", icon: RefreshCw },
+    { id: "reports", label: "Reports", icon: BarChart3 },
   ];
 
   return (
@@ -234,11 +238,13 @@ export const MobileBottomNav: React.FC<NavigationProps> = ({
             onClick={() => onSelectTab(item.id)}
             className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg text-[10px] font-medium transition-all ${
               isActive
-                ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                ? "text-emerald-600 dark:text-emerald-400 font-bold"
+                : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
             }`}
           >
-            <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
+            <Icon
+              className={`w-4 h-4 ${isActive ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`}
+            />
             <span>{item.label}</span>
           </button>
         );
