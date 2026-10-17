@@ -39,6 +39,7 @@ interface FinanceContextType {
   recurring: RecurringTransaction[];
   currency: string;
   theme: "dark" | "light";
+  themePreference: "system" | "dark" | "light";
   toasts: ToastMessage[];
   isLoading: boolean;
   dbStatus: DatabaseStatus;
@@ -46,6 +47,7 @@ interface FinanceContextType {
   // Actions
   setCurrency: (currency: string) => void;
   setTheme: (theme: "dark" | "light") => void;
+  useSystemTheme: () => void;
   toggleTheme: () => void;
   showToast: (
     type: "success" | "info" | "error",
@@ -119,7 +121,17 @@ interface FinanceContextType {
   clearAllData: (keepCategories?: boolean) => Promise<void>;
 }
 
-const THEME_KEY = "altrack_theme_v1";
+const THEME_KEY = "altrack_theme_v2";
+type Theme = "dark" | "light";
+type ThemePreference = "system" | Theme;
+
+const getSystemTheme = (): Theme =>
+  window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+
+const getStoredThemePreference = (): ThemePreference => {
+  const stored = localStorage.getItem(THEME_KEY);
+  return stored === "dark" || stored === "light" ? stored : "system";
+};
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
@@ -142,15 +154,24 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const [currency, setCurrencyState] = useState<string>("USD");
 
-  const [theme, setThemeState] = useState<"dark" | "light">(() => {
-    return (localStorage.getItem(THEME_KEY) as "dark" | "light") || "dark";
-  });
+  const [themePreference, setThemePreference] = useState<ThemePreference>(getStoredThemePreference);
+  const [systemTheme, setSystemTheme] = useState<Theme>(getSystemTheme);
+  const theme: Theme = themePreference === "system" ? systemTheme : themePreference;
 
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  // Theme synchronization
+  // Keep following device changes only while the user has not selected a theme.
   useEffect(() => {
-    localStorage.setItem(THEME_KEY, theme);
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const syncSystemTheme = (event: MediaQueryListEvent) => setSystemTheme(event.matches ? "dark" : "light");
+    mediaQuery.addEventListener("change", syncSystemTheme);
+    return () => mediaQuery.removeEventListener("change", syncSystemTheme);
+  }, []);
+
+  // Theme synchronization and explicit-preference persistence.
+  useEffect(() => {
+    if (themePreference === "system") localStorage.removeItem(THEME_KEY);
+    else localStorage.setItem(THEME_KEY, themePreference);
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
       document.body.classList.remove("bg-slate-50", "text-slate-900");
@@ -160,7 +181,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       document.body.classList.remove("bg-slate-950", "text-slate-100");
       document.body.classList.add("bg-slate-50", "text-slate-900");
     }
-  }, [theme]);
+  }, [theme, themePreference]);
 
   const setCurrency = async (newCurrency: string) => {
     try {
@@ -178,11 +199,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const setTheme = (newTheme: "dark" | "light") => {
-    setThemeState(newTheme);
+    setThemePreference(newTheme);
   };
 
+  const useSystemTheme = () => setThemePreference("system");
+
   const toggleTheme = () => {
-    setThemeState((prev) => (prev === "dark" ? "light" : "dark"));
+    setThemePreference(theme === "dark" ? "light" : "dark");
   };
 
   // Toast notification system
@@ -967,11 +990,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
         recurring,
         currency,
         theme,
+        themePreference,
         toasts,
         isLoading,
         dbStatus,
         setCurrency,
         setTheme,
+        useSystemTheme,
         toggleTheme,
         showToast,
         removeToast,

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useFinance } from '../context/FinanceContext';
-import { Sun, Moon, Sparkles } from 'lucide-react';
+import { Sun, Moon, Monitor } from 'lucide-react';
 
 interface ThemeSwitcherProps {
   variant?: 'segmented' | 'compact' | 'toggle';
@@ -11,7 +11,7 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({
   variant = 'segmented',
   className = '',
 }) => {
-  const { theme, setTheme, toggleTheme } = useFinance();
+  const { theme, themePreference, setTheme, useSystemTheme, toggleTheme } = useFinance();
 
   if (variant === 'compact') {
     return (
@@ -19,7 +19,7 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({
         type="button"
         onClick={toggleTheme}
         aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-        title={`Current: ${theme === 'dark' ? 'Dark' : 'Light'} mode (click to toggle)`}
+        title={`${themePreference === 'system' ? 'Following device' : `Current: ${theme === 'dark' ? 'Dark' : 'Light'} mode`} (click to toggle)`}
         className={`relative inline-flex items-center justify-center p-2 rounded-xl transition-all duration-200 border
           bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200
           dark:bg-slate-950 dark:hover:bg-slate-900 dark:text-slate-300 dark:border-slate-800
@@ -63,6 +63,22 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({
       role="radiogroup"
       aria-label="Theme preference switcher"
     >
+      {/* System Option */}
+      <button
+        type="button"
+        role="radio"
+        aria-checked={themePreference === 'system'}
+        onClick={useSystemTheme}
+        className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all duration-200 select-none ${
+          themePreference === 'system'
+            ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-emerald-400 shadow-sm border border-slate-200/80 dark:border-slate-700/80'
+            : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+        }`}
+      >
+        <Monitor className={`w-3.5 h-3.5 ${themePreference === 'system' ? 'text-emerald-500' : 'text-slate-400'}`} />
+        <span>System</span>
+      </button>
+
       {/* Light Option */}
       <button
         type="button"
